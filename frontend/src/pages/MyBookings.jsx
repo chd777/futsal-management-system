@@ -23,11 +23,9 @@ export default function MyBookings() {
       ]);
       setBookings(bRes.data.bookings || []);
 
-      // Build a set of booking IDs that have been reviewed
       const reviews = rRes.data.reviews || [];
       const reviewedBookingIds = new Set();
       for (const r of reviews) {
-        // The review has a 'booking' field which is the booking ID
         if (r.booking) {
           reviewedBookingIds.add(r.booking._id || r.booking);
         }
@@ -127,6 +125,18 @@ export default function MyBookings() {
                   <div className="muted small mt-sm">
                     {b.date} &middot; {b.slot} &middot; NPR {b.priceAtBooking}
                   </div>
+
+                  {/* Show cancellation reason if cancelled by admin */}
+                  {b.status === "CANCELLED" && b.cancelReason && (
+                    <div className="alert error" style={{ marginTop: 8, padding: "8px 12px", fontSize: 13 }}>
+                      <strong>Cancelled by admin:</strong> {b.cancelReason}
+                    </div>
+                  )}
+                  {b.status === "CANCELLED" && !b.cancelReason && b.cancelledBy === "admin" && (
+                    <div className="alert error" style={{ marginTop: 8, padding: "8px 12px", fontSize: 13 }}>
+                      Cancelled by admin
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
                   {statusPill(b.status)}

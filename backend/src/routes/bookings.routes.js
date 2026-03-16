@@ -1,9 +1,11 @@
 const router = require("express").Router();
 const Booking = require("../models/Booking");
 const Pitch = require("../models/Pitch");
+const User = require("../models/User");
 const auth = require("../middleware/auth");
+const emailService = require("../utils/emailService");
 
-// POST /api/bookings - create a booking
+// Create booking
 router.post("/", auth, async (req, res) => {
   try {
     const { pitchId, date, slot } = req.body;
@@ -13,42 +15,11 @@ router.post("/", auth, async (req, res) => {
       return res.status(400).json({ message: "pitchId, date, and slot are required" });
     }
 
-    // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ message: "Invalid date format" });
-    }
-
-    // Don't allow past dates
-    const today = new Date().toISOString().slice(0, 10);
-    if (date < today) {
-      return res.status(400).json({ message: "Cannot book a past date" });
-    }
-
-    // Get pitch
     const pitch = await Pitch.findById(pitchId);
-    if (!pitch || !pitch.isActive) {
-      return res.status(404).json({ message: "Pitch not found or inactive" });
-    }
+    if (!pitch) return res.status(404).json({ message: "Pitch not found" });
+    if (!pitch.isActive) return res.status(400).json({ message: "This pitch is currently unavailable" });
 
-    // Validate slot format and range
-    const [startStr] = slot.split("-");
-    const slotHour = parseInt(startStr, 10);
-    const [openH] = pitch.openTime.split(":").map(Number);
-    const [closeH] = pitch.closeTime.split(":").map(Number);
-
-    if (slotHour < openH || slotHour >= closeH) {
-      return res.status(400).json({ message: "Slot outside pitch operating hours" });
-    }
-
-    // Check for past time on today
-    if (date === today) {
-      const now = new Date();
-      if (slotHour <= now.getHours()) {
-        return res.status(400).json({ message: "Cannot book a past time slot" });
-      }
-    }
-
-    // Check double booking
+    // Check for existing non-cancelled booking
     const existing = await Booking.findOne({
       pitch: pitchId,
       date,
@@ -68,22 +39,32 @@ router.post("/", auth, async (req, res) => {
       status: "PENDING_PAYMENT"
     });
 
+    // Send email notification to user
+    const user = await User.findById(userId);
+    if (user) {
+      emailService.sendBookingConfirmation(user, booking, pitch).catch(() => {});
+    }
+
+    // Send email notification to admin(s)
+    const admins = await User.find({ role: "admin" }).select("email");
+    for (const admin of admins) {
+      emailService.sendAdminNewBookingAlert(admin.email, user, booking, pitch).catch(() => {});
+    }
+
     res.status(201).json({ booking });
   } catch (err) {
-    // Handle mongoose unique index violation (double booking race condition)
     if (err.code === 11000) {
-      return res.status(409).json({ message: "This slot is already booked" });
+      return res.status(409).json({ message: "This slot is already booked (duplicate)" });
     }
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// GET /api/bookings/my - user's bookings
+// Get my bookings
 router.get("/my", auth, async (req, res) => {
   try {
-    const userId = req.user.sub;
-    const bookings = await Booking.find({ user: userId })
+    const bookings = await Booking.find({ user: req.user.sub })
       .populate("pitch", "name address pricePerHour")
       .sort({ date: -1, slot: -1 });
 
@@ -94,23 +75,29 @@ router.get("/my", auth, async (req, res) => {
   }
 });
 
-// PUT /api/bookings/:id/cancel - user cancels own booking (only before payment)
+// Cancel booking (user)
 router.put("/:id/cancel", auth, async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
+    const booking = await Booking.findOne({ _id: req.params.id, user: req.user.sub });
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    if (booking.user.toString() !== req.user.sub) {
-      return res.status(403).json({ message: "Not your booking" });
+    if (booking.status === "CANCELLED") {
+      return res.status(400).json({ message: "Already cancelled" });
     }
-
-    if (booking.status !== "PENDING_PAYMENT") {
-      return res.status(400).json({ message: "Can only cancel unpaid bookings" });
+    if (booking.status === "PAID") {
+      return res.status(400).json({ message: "Cannot cancel a paid booking. Contact admin." });
     }
 
     booking.status = "CANCELLED";
     booking.cancelledAt = new Date();
     await booking.save();
+
+    // Send cancellation email to user
+    const user = await User.findById(req.user.sub);
+    const pitch = await Pitch.findById(booking.pitch);
+    if (user && pitch) {
+      emailService.sendBookingCancelledByUser(user, booking, pitch).catch(() => {});
+    }
 
     res.json({ message: "Booking cancelled", booking });
   } catch (err) {

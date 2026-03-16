@@ -4,6 +4,7 @@ const controller = require("../controllers/auth.controller");
 
 router.post("/register", controller.register);
 router.post("/login", controller.login);
+router.post("/google", controller.googleLogin);  // Google OAuth
 router.get("/me", auth, controller.me);
 
 module.exports = router;

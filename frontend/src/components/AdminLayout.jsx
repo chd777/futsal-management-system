@@ -28,6 +28,9 @@ export default function AdminLayout({ children }) {
           <NavLink to="/admin/revenue" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
             Revenue
           </NavLink>
+          <NavLink to="/admin/closures" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+  📅 Closures
+</NavLink>
         </div>
         <div className="sidebar-footer">
           <div className="muted small mb-sm">{user?.email}</div>

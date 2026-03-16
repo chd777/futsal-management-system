@@ -15,7 +15,9 @@ const bookingSchema = new mongoose.Schema(
     khaltiPidx: { type: String, default: null },
     khaltiTxnId: { type: String, default: null },
     paidAt: { type: Date, default: null },
-    cancelledAt: { type: Date, default: null }
+    cancelledAt: { type: Date, default: null },
+    cancelReason: { type: String, default: null },
+    cancelledBy: { type: String, enum: ["user", "admin", null], default: null }
   },
   { timestamps: true }
 );

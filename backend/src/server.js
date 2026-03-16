@@ -13,6 +13,7 @@ const pitchRoutes = require("./routes/pitches.routes");
 const bookingRoutes = require("./routes/bookings.routes");
 const paymentRoutes = require("./routes/payments.routes");
 const reviewRoutes = require("./routes/reviews.routes");
+const adminClosureRoutes = require("./routes/admin.closures.routes");
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use("/api/pitches", pitchRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/admin/closures", adminClosureRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -19,6 +19,7 @@ export default function PitchDetail() {
   const [booking, setBooking] = useState(false);
   const [bookMsg, setBookMsg] = useState("");
   const [bookErr, setBookErr] = useState("");
+  const [closureInfo, setClosureInfo] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -41,10 +42,17 @@ export default function PitchDetail() {
       setSelectedSlot(null);
       try {
         const res = await api.get(`/api/pitches/${id}/slots?date=${selectedDate}`);
-        setSlots(res.data.slots || []);
+        if (res.data.closed) {
+          setSlots([]);
+          setClosureInfo(res.data.closureReason);
+        } else {
+          setSlots(res.data.slots || []);
+          setClosureInfo(null);
+        }
       } catch (err) {
         console.error(err);
         setSlots([]);
+        setClosureInfo(null);
       } finally {
         setSlotsLoading(false);
       }
@@ -67,7 +75,13 @@ export default function PitchDetail() {
 
       // Refresh slots
       const slotRes = await api.get(`/api/pitches/${id}/slots?date=${selectedDate}`);
-      setSlots(slotRes.data.slots || []);
+      if (slotRes.data.closed) {
+        setSlots([]);
+        setClosureInfo(slotRes.data.closureReason);
+      } else {
+        setSlots(slotRes.data.slots || []);
+        setClosureInfo(null);
+      }
 
       // Redirect to my bookings after short delay
       setTimeout(() => nav("/my-bookings"), 1500);
@@ -142,25 +156,35 @@ export default function PitchDetail() {
         <div className="mt-md">
           {slotsLoading ? (
             <div className="muted">Loading slots...</div>
-          ) : slots.length === 0 ? (
-            <div className="muted">No slots available for this date.</div>
           ) : (
             <>
-              <p className="muted small mb-sm">Click an available slot to select it, then confirm booking.</p>
-              <div className="slot-grid">
-                {slots.map(s => (
-                  <button
-                    key={s.slot}
-                    className={`slot-btn ${!s.available ? (s.booked ? "booked" : "") : ""} ${selectedSlot === s.slot ? "selected" : ""}`}
-                    disabled={!s.available}
-                    onClick={() => setSelectedSlot(s.slot === selectedSlot ? null : s.slot)}
-                  >
-                    {s.slot}
-                    {s.booked && <span className="small"> (Booked)</span>}
-                    {s.past && <span className="small"> (Past)</span>}
-                  </button>
-                ))}
-              </div>
+              {closureInfo && (
+                <div className="alert warn" style={{ marginBottom: 12 }}>
+                  <strong>⚠️ Pitch closed on this date:</strong> {closureInfo}
+                </div>
+              )}
+              {!closureInfo && slots.length === 0 && (
+                <div className="muted">No slots available for this date.</div>
+              )}
+              {slots.length > 0 && (
+                <>
+                  <p className="muted small mb-sm">Click an available slot to select it, then confirm booking.</p>
+                  <div className="slot-grid">
+                    {slots.map(s => (
+                      <button
+                        key={s.slot}
+                        className={`slot-btn ${!s.available ? (s.booked ? "booked" : "") : ""} ${selectedSlot === s.slot ? "selected" : ""}`}
+                        disabled={!s.available}
+                        onClick={() => setSelectedSlot(s.slot === selectedSlot ? null : s.slot)}
+                      >
+                        {s.slot}
+                        {s.booked && <span className="small"> (Booked)</span>}
+                        {s.past && <span className="small"> (Past)</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

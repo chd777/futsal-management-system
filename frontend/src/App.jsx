@@ -1,3 +1,4 @@
+import AdminClosures from "./pages/AdminClosures";
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
@@ -54,6 +55,7 @@ export default function App() {
       <Route path="/pitches" element={<UserPage><BrowsePitches /></UserPage>} />
       <Route path="/pitches/:id" element={<UserPage><PitchDetail /></UserPage>} />
       <Route path="/my-bookings" element={<UserPage><MyBookings /></UserPage>} />
+      <Route path="/admin/closures" element={<AdminPage><AdminClosures /></AdminPage>} />
 
       {/* Payment callback - still protected but no layout wrapper needed */}
       <Route
