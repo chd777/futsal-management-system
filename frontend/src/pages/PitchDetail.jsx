@@ -11,7 +11,6 @@ export default function PitchDetail() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Slot selection
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [slots, setSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -20,6 +19,9 @@ export default function PitchDetail() {
   const [bookMsg, setBookMsg] = useState("");
   const [bookErr, setBookErr] = useState("");
   const [closureInfo, setClosureInfo] = useState(null);
+
+  // Loyalty
+  const [loyalty, setLoyalty] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -32,6 +34,14 @@ export default function PitchDetail() {
       } finally {
         setLoading(false);
       }
+    })();
+
+    // Load loyalty status
+    (async () => {
+      try {
+        const res = await api.get(`/api/bookings/loyalty/${id}`);
+        setLoyalty(res.data);
+      } catch {}
     })();
   }, [id]);
 
@@ -70,7 +80,12 @@ export default function PitchDetail() {
         date: selectedDate,
         slot: selectedSlot
       });
-      setBookMsg("Booking created! Redirecting to payment...");
+
+      if (res.data.isLoyaltyReward) {
+        setBookMsg("🎉 Congratulations! This booking is FREE as a loyalty reward!");
+      } else {
+        setBookMsg("Booking created! Redirecting to My Bookings...");
+      }
       setSelectedSlot(null);
 
       // Refresh slots
@@ -83,8 +98,13 @@ export default function PitchDetail() {
         setClosureInfo(null);
       }
 
-      // Redirect to my bookings after short delay
-      setTimeout(() => nav("/my-bookings"), 1500);
+      // Refresh loyalty
+      try {
+        const loyRes = await api.get(`/api/bookings/loyalty/${id}`);
+        setLoyalty(loyRes.data);
+      } catch {}
+
+      setTimeout(() => nav("/my-bookings"), 2000);
     } catch (err) {
       setBookErr(err?.response?.data?.message || "Booking failed");
     } finally {
@@ -96,7 +116,7 @@ export default function PitchDetail() {
   if (!pitch) return <div className="empty-state">Pitch not found.</div>;
 
   const mapSrc = pitch.lat && pitch.lng
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${pitch.lng-0.01},${pitch.lat-0.008},${pitch.lng+0.01},${pitch.lat+0.008}&layer=mapnik&marker=${pitch.lat},${pitch.lng}`
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${pitch.lng-0.01},${pitch.lat-0.008},${Number(pitch.lng)+0.01},${Number(pitch.lat)+0.008}&layer=mapnik&marker=${pitch.lat},${pitch.lng}`
     : null;
 
   return (
@@ -118,6 +138,46 @@ export default function PitchDetail() {
         <StarRating value={pitch.avgRating} readOnly size={20} />
         <span className="muted">{pitch.avgRating ? pitch.avgRating.toFixed(1) : "No ratings"} ({pitch.reviewCount} review{pitch.reviewCount !== 1 ? "s" : ""})</span>
       </div>
+
+      {/* Loyalty Progress */}
+      {loyalty && (
+        <div className="panel mt-md" style={{ background: loyalty.nextIsFree ? "rgba(61,220,151,0.08)" : "rgba(91,140,255,0.05)", border: loyalty.nextIsFree ? "1px solid rgba(61,220,151,0.3)" : "1px solid rgba(91,140,255,0.2)" }}>
+          <div className="flex-between">
+            <div>
+              {loyalty.nextIsFree ? (
+                <>
+                  <h3 style={{ color: "var(--ok)" }}>🎉 Your next booking is FREE!</h3>
+                  <p className="muted small mt-sm">You've completed {loyalty.completedBookings} bookings here. Enjoy your free game!</p>
+                </>
+              ) : (
+                <>
+                  <h3>🎯 Loyalty Progress</h3>
+                  <p className="muted small mt-sm">
+                    {loyalty.completedBookings > 0
+                      ? `${loyalty.progress}/5 bookings — ${loyalty.remaining} more for a free game!`
+                      : "Book 5 times at this pitch to earn a free game!"
+                    }
+                  </p>
+                </>
+              )}
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: loyalty.nextIsFree ? "var(--ok)" : "var(--accent)" }}>
+              {loyalty.progress}/5
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ marginTop: 10, background: "var(--border)", borderRadius: 8, height: 8, overflow: "hidden" }}>
+            <div style={{
+              width: `${loyalty.nextIsFree ? 100 : (loyalty.progress / 5) * 100}%`,
+              height: "100%",
+              background: loyalty.nextIsFree ? "var(--ok)" : "var(--accent)",
+              borderRadius: 8,
+              transition: "width 0.3s"
+            }} />
+          </div>
+        </div>
+      )}
 
       {/* Map */}
       {mapSrc && (
@@ -190,12 +250,17 @@ export default function PitchDetail() {
         </div>
 
         {selectedSlot && (
-          <div className="mt-md" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div className="mt-md" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <div>
-              <strong>Selected:</strong> {selectedDate} &middot; {selectedSlot} &middot; NPR {pitch.pricePerHour}
+              <strong>Selected:</strong> {selectedDate} &middot; {selectedSlot} &middot;{" "}
+              {loyalty?.nextIsFree ? (
+                <span style={{ color: "var(--ok)", fontWeight: 800 }}>FREE 🎉</span>
+              ) : (
+                <span>NPR {pitch.pricePerHour}</span>
+              )}
             </div>
             <button className="btn ok" onClick={handleBook} disabled={booking}>
-              {booking ? "Booking..." : "Confirm Booking"}
+              {booking ? "Booking..." : loyalty?.nextIsFree ? "🎉 Book for FREE" : "Confirm Booking"}
             </button>
           </div>
         )}

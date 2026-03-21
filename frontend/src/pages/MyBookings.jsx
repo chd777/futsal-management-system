@@ -7,7 +7,6 @@ export default function MyBookings() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("upcoming");
 
-  // Review modal state
   const [reviewModal, setReviewModal] = useState(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
@@ -71,6 +70,17 @@ export default function MyBookings() {
     }
   }
 
+  async function payLater(bookingId) {
+    if (!confirm("Confirm booking with Pay Later? You'll need to pay with cash at the venue.")) return;
+    try {
+      const res = await api.post("/api/payments/pay-later", { bookingId });
+      alert(res.data.message || "Booking confirmed with Pay Later!");
+      loadBookings();
+    } catch (e) {
+      alert(e?.response?.data?.message || "Failed to confirm");
+    }
+  }
+
   async function submitReview() {
     if (!reviewModal) return;
     setReviewLoading(true);
@@ -92,8 +102,10 @@ export default function MyBookings() {
     }
   }
 
-  function statusPill(status) {
+  function statusPill(status, isLoyalty) {
+    if (isLoyalty) return <span className="pill paid" style={{ background: "rgba(61,220,151,0.15)" }}>🎉 FREE (Loyalty)</span>;
     if (status === "PAID") return <span className="pill paid">Paid</span>;
+    if (status === "CONFIRMED_PAY_LATER") return <span className="pill pending">Pay at Venue</span>;
     if (status === "PENDING_PAYMENT") return <span className="pill pending">Pending Payment</span>;
     if (status === "CANCELLED") return <span className="pill cancelled">Cancelled</span>;
     return <span className="pill">{status}</span>;
@@ -123,23 +135,27 @@ export default function MyBookings() {
                   <div className="list-title">{b.pitch?.name || "Pitch"}</div>
                   <div className="muted small mt-sm">{b.pitch?.address}</div>
                   <div className="muted small mt-sm">
-                    {b.date} &middot; {b.slot} &middot; NPR {b.priceAtBooking}
+                    {b.date} &middot; {b.slot} &middot;{" "}
+                    {b.isLoyaltyReward ? (
+                      <span style={{ color: "var(--ok)", fontWeight: 700 }}>FREE (Loyalty Reward)</span>
+                    ) : (
+                      <span>NPR {b.priceAtBooking}</span>
+                    )}
                   </div>
 
-                  {/* Show cancellation reason if cancelled by admin */}
                   {b.status === "CANCELLED" && b.cancelReason && (
                     <div className="alert error" style={{ marginTop: 8, padding: "8px 12px", fontSize: 13 }}>
                       <strong>Cancelled by admin:</strong> {b.cancelReason}
                     </div>
                   )}
-                  {b.status === "CANCELLED" && !b.cancelReason && b.cancelledBy === "admin" && (
-                    <div className="alert error" style={{ marginTop: 8, padding: "8px 12px", fontSize: 13 }}>
-                      Cancelled by admin
+                  {b.status === "CONFIRMED_PAY_LATER" && (
+                    <div className="alert warn" style={{ marginTop: 8, padding: "8px 12px", fontSize: 13 }}>
+                      Please pay <strong>NPR {b.priceAtBooking}</strong> with cash at the venue.
                     </div>
                   )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-                  {statusPill(b.status)}
+                  {statusPill(b.status, b.isLoyaltyReward)}
 
                   <div className="flex-gap">
                     {b.status === "PENDING_PAYMENT" && (
@@ -147,12 +163,15 @@ export default function MyBookings() {
                         <button className="btn small ok" onClick={() => initiatePayment(b._id)}>
                           Pay with Khalti
                         </button>
+                        <button className="btn small warn" onClick={() => payLater(b._id)}>
+                          Pay Later (Cash)
+                        </button>
                         <button className="btn small danger" onClick={() => cancelBooking(b._id)}>
                           Cancel
                         </button>
                       </>
                     )}
-                    {b.status === "PAID" && b.date < today && !reviewedSet.has(b._id) && (
+                    {(b.status === "PAID" || b.status === "CONFIRMED_PAY_LATER") && b.date < today && !reviewedSet.has(b._id) && (
                       <button className="btn small" onClick={() => { setReviewModal(b); setReviewRating(5); setReviewComment(""); }}>
                         Write Review
                       </button>

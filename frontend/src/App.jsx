@@ -20,6 +20,7 @@ import BrowsePitches from "./pages/BrowsePitches";
 import PitchDetail from "./pages/PitchDetail";
 import MyBookings from "./pages/MyBookings";
 import PaymentVerify from "./pages/PaymentVerify";
+import Profile from "./pages/Profile";
 
 function AdminPage({ children }) {
   return (
@@ -56,6 +57,7 @@ export default function App() {
       <Route path="/pitches/:id" element={<UserPage><PitchDetail /></UserPage>} />
       <Route path="/my-bookings" element={<UserPage><MyBookings /></UserPage>} />
       <Route path="/admin/closures" element={<AdminPage><AdminClosures /></AdminPage>} />
+      <Route path="/profile" element={<UserPage><Profile /></UserPage>} />
 
       {/* Payment callback - still protected but no layout wrapper needed */}
       <Route

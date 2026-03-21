@@ -1,3 +1,4 @@
+import ChatBot from "./ChatBot";
 import React, { useContext } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { AuthContext } from "../auth/AuthContext";
@@ -29,12 +30,19 @@ export default function UserLayout({ children }) {
           <NavLink to="/my-bookings" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
             My Bookings
           </NavLink>
+          <NavLink to="/profile" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+  Profile
+</NavLink>
         </div>
         <div className="nav-right">
-          <span className="pill user-pill">
-            <span className="user-avatar">{(user?.fullName || "U")[0].toUpperCase()}</span>
-            {user?.fullName || user?.email}
-          </span>
+          <a href="/profile" className="pill user-pill" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }} onClick={(e) => { e.preventDefault(); nav("/profile"); }}>
+  {(user?.profilePicture || user?.googleProfilePicture) ? (
+  <img src={user.profilePicture || user.googleProfilePicture} alt="" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} />
+  ) : (
+    <span className="user-avatar">{(user?.fullName || "U")[0].toUpperCase()}</span>
+  )}
+  {user?.fullName || user?.email}
+</a>
           <button className="btn small" onClick={handleLogout}>Logout</button>
         </div>
       </nav>
@@ -75,6 +83,8 @@ export default function UserLayout({ children }) {
           <span>&copy; {new Date().getFullYear()} FutsalMS. All rights reserved.</span>
         </div>
       </footer>
+
+      <ChatBot />
     </div>
   );
 }

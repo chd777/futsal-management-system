@@ -85,24 +85,32 @@ exports.sendBookingConfirmation = async (user, booking, pitch) => {
 };
 
 // 2. New Booking - to Admin
+// 2. New Booking - to Admin
 exports.sendAdminNewBookingAlert = async (adminEmail, user, booking, pitch) => {
+  const isLoyalty = booking.isLoyaltyReward;
   const html = emailTemplate("New Booking Alert 📢", `
     <p style="color: #9aa4b2;">A new booking has been made:</p>
     
+    ${isLoyalty ? `
+    <div style="background: rgba(61,220,151,0.1); border: 1px solid rgba(61,220,151,0.3); border-radius: 10px; padding: 12px; margin: 12px 0; text-align: center;">
+      <p style="font-size: 16px; font-weight: 700; color: #3ddc97; margin: 0;">🎉 Loyalty Reward - FREE Booking</p>
+    </div>
+    ` : ""}
+
     <div style="background: #121a27; border: 1px solid #223047; border-radius: 10px; padding: 16px; margin: 20px 0;">
       <table style="width: 100%; color: #9aa4b2; font-size: 14px;">
         <tr><td style="padding: 6px 0;">👤 Customer</td><td style="color: #eef2f7; font-weight: 600;">${user.fullName} (${user.email})</td></tr>
         <tr><td style="padding: 6px 0;">📍 Pitch</td><td style="color: #eef2f7; font-weight: 600;">${pitch.name}</td></tr>
         <tr><td style="padding: 6px 0;">📅 Date</td><td style="color: #eef2f7; font-weight: 600;">${booking.date}</td></tr>
         <tr><td style="padding: 6px 0;">⏰ Slot</td><td style="color: #eef2f7; font-weight: 600;">${booking.slot}</td></tr>
-        <tr><td style="padding: 6px 0;">💰 Price</td><td style="color: #5b8cff; font-weight: 600;">NPR ${booking.priceAtBooking}</td></tr>
+        <tr><td style="padding: 6px 0;">💰 Price</td><td style="color: ${isLoyalty ? '#3ddc97' : '#5b8cff'}; font-weight: 600;">${isLoyalty ? "FREE (Loyalty Reward)" : "NPR " + booking.priceAtBooking}</td></tr>
       </table>
     </div>
     
     <p style="color: #9aa4b2;">Check your admin dashboard for more details.</p>
   `);
 
-  return sendEmail(adminEmail, "📢 New Booking - FutsalMS", html);
+  return sendEmail(adminEmail, isLoyalty ? "🎉 Loyalty Reward Booking - FutsalMS" : "📢 New Booking - FutsalMS", html);
 };
 
 // 3. Booking Cancelled by User - to User
@@ -171,4 +179,32 @@ exports.sendPaymentConfirmation = async (user, booking, pitch) => {
   `);
 
   return sendEmail(user.email, "💰 Payment Confirmed - FutsalMS", html);
+};
+
+// 6. Loyalty Reward - Free Booking Email
+exports.sendLoyaltyRewardEmail = async (user, booking, pitch, totalBookings) => {
+  const html = emailTemplate("🎉 FREE Booking - Loyalty Reward!", `
+    <p style="color: #9aa4b2;">Hi <strong style="color: #eef2f7;">${user.fullName}</strong>,</p>
+    <p style="color: #9aa4b2;">Congratulations! You've earned a <strong style="color: #3ddc97;">FREE booking</strong> as a loyalty reward!</p>
+    
+    <div style="background: rgba(61,220,151,0.1); border: 1px solid rgba(61,220,151,0.3); border-radius: 10px; padding: 16px; margin: 20px 0; text-align: center;">
+      <p style="font-size: 20px; font-weight: 800; color: #3ddc97; margin: 0;">🎉 FREE GAME!</p>
+      <p style="color: #9aa4b2; margin: 6px 0 0;">After ${totalBookings} bookings at ${pitch.name}</p>
+    </div>
+
+    <div style="background: #121a27; border: 1px solid #223047; border-radius: 10px; padding: 16px; margin: 20px 0;">
+      <table style="width: 100%; color: #9aa4b2; font-size: 14px;">
+        <tr><td style="padding: 6px 0;">📍 Pitch</td><td style="color: #eef2f7; font-weight: 600;">${pitch.name}</td></tr>
+        <tr><td style="padding: 6px 0;">📅 Date</td><td style="color: #eef2f7; font-weight: 600;">${booking.date}</td></tr>
+        <tr><td style="padding: 6px 0;">⏰ Slot</td><td style="color: #eef2f7; font-weight: 600;">${booking.slot}</td></tr>
+        <tr><td style="padding: 6px 0;">💰 Price</td><td style="color: #3ddc97; font-weight: 600;">FREE (NPR 0)</td></tr>
+        <tr><td style="padding: 6px 0;">📋 Status</td><td style="color: #3ddc97; font-weight: 600;">CONFIRMED ✅</td></tr>
+      </table>
+    </div>
+    
+    <p style="color: #9aa4b2;">No payment needed — just show up and enjoy your game! ⚽</p>
+    <p style="color: #9aa4b2;">Keep booking to earn more free games. Every 6th booking is on us!</p>
+  `);
+
+  return sendEmail(user.email, "🎉 FREE Booking - Loyalty Reward! - FutsalMS", html);
 };

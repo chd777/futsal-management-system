@@ -5,6 +5,8 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const emailService = require("../utils/emailService");
 
+const LOYALTY_THRESHOLD = 5; // Free booking every 6th time (after 5 paid)
+
 // Create booking
 router.post("/", auth, async (req, res) => {
   try {
@@ -30,19 +32,35 @@ router.post("/", auth, async (req, res) => {
       return res.status(409).json({ message: "This slot is already booked" });
     }
 
+    // Check loyalty - count completed bookings for this user on this pitch
+    const completedCount = await Booking.countDocuments({
+      user: userId,
+      pitch: pitchId,
+      status: { $in: ["PAID", "CONFIRMED_PAY_LATER"] }
+    });
+
+    const isLoyaltyReward = completedCount > 0 && completedCount % LOYALTY_THRESHOLD === 0;
+
     const booking = await Booking.create({
       user: userId,
       pitch: pitchId,
       date,
       slot,
-      priceAtBooking: pitch.pricePerHour,
-      status: "PENDING_PAYMENT"
+      priceAtBooking: isLoyaltyReward ? 0 : pitch.pricePerHour,
+      status: isLoyaltyReward ? "PAID" : "PENDING_PAYMENT",
+      isLoyaltyReward: isLoyaltyReward,
+      paidAt: isLoyaltyReward ? new Date() : null
     });
 
     // Send email notification to user
     const user = await User.findById(userId);
     if (user) {
-      emailService.sendBookingConfirmation(user, booking, pitch).catch(() => {});
+      if (isLoyaltyReward) {
+        // Send special loyalty reward email
+        emailService.sendLoyaltyRewardEmail(user, booking, pitch, completedCount).catch(() => {});
+      } else {
+        emailService.sendBookingConfirmation(user, booking, pitch).catch(() => {});
+      }
     }
 
     // Send email notification to admin(s)
@@ -51,7 +69,13 @@ router.post("/", auth, async (req, res) => {
       emailService.sendAdminNewBookingAlert(admin.email, user, booking, pitch).catch(() => {});
     }
 
-    res.status(201).json({ booking });
+    res.status(201).json({
+      booking,
+      isLoyaltyReward,
+      message: isLoyaltyReward
+        ? "🎉 Congratulations! This booking is FREE as a loyalty reward! You've earned it after 5 bookings."
+        : "Booking created successfully"
+    });
   } catch (err) {
     if (err.code === 11000) {
       return res.status(409).json({ message: "This slot is already booked (duplicate)" });
@@ -75,6 +99,32 @@ router.get("/my", auth, async (req, res) => {
   }
 });
 
+// Get loyalty status for a pitch
+router.get("/loyalty/:pitchId", auth, async (req, res) => {
+  try {
+    const completedCount = await Booking.countDocuments({
+      user: req.user.sub,
+      pitch: req.params.pitchId,
+      status: { $in: ["PAID", "CONFIRMED_PAY_LATER"] }
+    });
+
+    const progress = completedCount % LOYALTY_THRESHOLD;
+    const remaining = LOYALTY_THRESHOLD - progress;
+    const nextIsFree = progress === 0 && completedCount > 0;
+
+    res.json({
+      completedBookings: completedCount,
+      progress,
+      remaining: nextIsFree ? 0 : remaining,
+      nextIsFree,
+      threshold: LOYALTY_THRESHOLD
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Cancel booking (user)
 router.put("/:id/cancel", auth, async (req, res) => {
   try {
@@ -84,7 +134,7 @@ router.put("/:id/cancel", auth, async (req, res) => {
     if (booking.status === "CANCELLED") {
       return res.status(400).json({ message: "Already cancelled" });
     }
-    if (booking.status === "PAID") {
+    if (booking.status === "PAID" && !booking.isLoyaltyReward) {
       return res.status(400).json({ message: "Cannot cancel a paid booking. Contact admin." });
     }
 

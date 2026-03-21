@@ -17,7 +17,7 @@ export default function Home() {
         const today = new Date().toISOString().slice(0, 10);
 
         const upcoming = bookings.filter(b => b.date >= today && b.status !== "CANCELLED");
-        const paid = bookings.filter(b => b.status === "PAID");
+        const paid = bookings.filter(b => b.status === "PAID" || b.status === "CONFIRMED_PAY_LATER");
 
         setStats({ total: bookings.length, upcoming: upcoming.length, paid: paid.length });
         setUpcomingBookings(upcoming.slice(0, 5));
@@ -30,10 +30,12 @@ export default function Home() {
   }, []);
 
   function statusPill(status) {
-    if (status === "PAID") return <span className="pill paid">Paid</span>;
-    if (status === "PENDING_PAYMENT") return <span className="pill pending">Pending</span>;
-    return <span className="pill cancelled">Cancelled</span>;
-  }
+  if (status === "PAID") return <span className="pill paid">Paid</span>;
+  if (status === "CONFIRMED_PAY_LATER") return <span className="pill pending">Pay at Venue</span>;
+  if (status === "PENDING_PAYMENT") return <span className="pill pending">Pending</span>;
+  if (status === "CANCELLED") return <span className="pill cancelled">Cancelled</span>;
+  return <span className="pill">{status}</span>;
+}
 
   return (
     <div>

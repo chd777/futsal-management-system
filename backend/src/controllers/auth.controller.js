@@ -67,7 +67,6 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // If user registered via Google and has no password
     if (!user.passwordHash) {
       return res.status(401).json({ message: "This account uses Google login. Please use 'Continue with Google'." });
     }
@@ -81,7 +80,7 @@ exports.login = async (req, res) => {
 
     return res.json({
       token,
-      user: { id: user._id, fullName: user.fullName, email: user.email, college: user.college, role: user.role }
+      user: { id: user._id, fullName: user.fullName, email: user.email, college: user.college, role: user.role, profilePicture: user.profilePicture, googleProfilePicture: user.googleProfilePicture }
     });
   } catch (err) {
     console.error(err);
@@ -98,7 +97,6 @@ exports.googleLogin = async (req, res) => {
       return res.status(400).json({ message: "Google credential is required" });
     }
 
-    // Verify the Google token
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID
@@ -111,27 +109,25 @@ exports.googleLogin = async (req, res) => {
       return res.status(400).json({ message: "Could not get email from Google" });
     }
 
-    // Check if user already exists
     let user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
-      // Create new user from Google data
       user = await User.create({
         fullName: name || "Google User",
         email: email.toLowerCase(),
-        passwordHash: null, // No password for Google users
+        passwordHash: null,
         college: "Not specified",
         role: "user",
         googleId: googleId,
-        profilePicture: picture || null
+        googleProfilePicture: picture || null,
+        profilePicture: null
       });
     } else {
-      // Update Google info if not set
       if (!user.googleId) {
         user.googleId = googleId;
-        if (picture) user.profilePicture = picture;
-        await user.save();
       }
+      if (picture) user.googleProfilePicture = picture;
+      await user.save();
     }
 
     const token = signToken(user._id.toString());
@@ -144,7 +140,8 @@ exports.googleLogin = async (req, res) => {
         email: user.email,
         college: user.college,
         role: user.role,
-        profilePicture: user.profilePicture
+        profilePicture: user.profilePicture,
+        googleProfilePicture: user.googleProfilePicture
       }
     });
   } catch (err) {
@@ -156,7 +153,7 @@ exports.googleLogin = async (req, res) => {
 exports.me = async (req, res) => {
   try {
     const userId = req.user?.sub;
-    const user = await User.findById(userId).select("fullName email college role createdAt profilePicture");
+    const user = await User.findById(userId).select("fullName email college role createdAt profilePicture googleProfilePicture");
     if (!user) return res.status(404).json({ message: "User not found" });
 
     return res.json({ user });

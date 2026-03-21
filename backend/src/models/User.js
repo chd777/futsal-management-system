@@ -4,11 +4,13 @@ const userSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true, trim: true, maxlength: 80 },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    passwordHash: { type: String, default: null }, // null for Google-only users
+    passwordHash: { type: String, default: null },
     college: { type: String, default: "Not specified", trim: true, maxlength: 120 },
     role: { type: String, default: "user", enum: ["user", "admin"] },
     googleId: { type: String, default: null },
-    profilePicture: { type: String, default: null }
+    googleProfilePicture: { type: String, default: null },
+    profilePicture: { type: String, default: null },
+    cloudinaryId: { type: String, default: null }
   },
   { timestamps: true }
 );

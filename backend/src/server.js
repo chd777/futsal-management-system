@@ -9,12 +9,13 @@ const authRoutes = require("./routes/auth.routes");
 const adminPitchRoutes = require("./routes/admin.pitches.routes");
 const adminBookingRoutes = require("./routes/admin.bookings.routes");
 const adminRevenueRoutes = require("./routes/admin.revenue.routes");
+const adminClosureRoutes = require("./routes/admin.closures.routes");
 const pitchRoutes = require("./routes/pitches.routes");
 const bookingRoutes = require("./routes/bookings.routes");
 const paymentRoutes = require("./routes/payments.routes");
 const reviewRoutes = require("./routes/reviews.routes");
-const adminClosureRoutes = require("./routes/admin.closures.routes");
-
+const chatRoutes = require("./routes/chat.routes");
+const profileRoutes = require("./routes/profile.routes");
 const app = express();
 
 // Parse JSON
@@ -59,13 +60,15 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin/pitches", adminPitchRoutes);
 app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api/admin/revenue", adminRevenueRoutes);
+app.use("/api/admin/closures", adminClosureRoutes);
 
 // Public / User
 app.use("/api/pitches", pitchRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
-app.use("/api/admin/closures", adminClosureRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/profile", profileRoutes);
 
 // 404 handler
 app.use((req, res) => {
