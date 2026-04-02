@@ -21,6 +21,7 @@ import PitchDetail from "./pages/PitchDetail";
 import MyBookings from "./pages/MyBookings";
 import PaymentVerify from "./pages/PaymentVerify";
 import Profile from "./pages/Profile";
+import PitchManage from "./pages/PitchManage";
 
 function AdminPage({ children }) {
   return (
@@ -45,21 +46,23 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/login" element={<Login />} />
 
+      {/* Pitch Owner Management - PIN based, no login required */}
+      <Route path="/pitch-manage" element={<PitchManage />} />
+
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminPage><AdminDashboard /></AdminPage>} />
       <Route path="/admin/pitches" element={<AdminPage><AdminPitches /></AdminPage>} />
       <Route path="/admin/bookings" element={<AdminPage><AdminBookings /></AdminPage>} />
       <Route path="/admin/revenue" element={<AdminPage><AdminRevenue /></AdminPage>} />
+      <Route path="/admin/closures" element={<AdminPage><AdminClosures /></AdminPage>} />
 
       {/* User Routes */}
       <Route path="/home" element={<UserPage><Home /></UserPage>} />
       <Route path="/pitches" element={<UserPage><BrowsePitches /></UserPage>} />
       <Route path="/pitches/:id" element={<UserPage><PitchDetail /></UserPage>} />
       <Route path="/my-bookings" element={<UserPage><MyBookings /></UserPage>} />
-      <Route path="/admin/closures" element={<AdminPage><AdminClosures /></AdminPage>} />
       <Route path="/profile" element={<UserPage><Profile /></UserPage>} />
 
-      {/* Payment callback - still protected but no layout wrapper needed */}
       <Route
         path="/payment/verify"
         element={

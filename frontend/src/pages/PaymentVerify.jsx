@@ -5,6 +5,7 @@ import { api } from "../api/axios";
 export default function PaymentVerify() {
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
+
   const [status, setStatus] = useState("verifying"); // verifying | success | failed
   const [message, setMessage] = useState("Verifying your payment...");
 
@@ -12,7 +13,7 @@ export default function PaymentVerify() {
     (async () => {
       const pidx = searchParams.get("pidx");
       const txnStatus = searchParams.get("status");
-      const bookingId = searchParams.get("purchase_order_id");
+      const purchaseOrderId = searchParams.get("purchase_order_id");
 
       if (!pidx) {
         setStatus("failed");
@@ -20,7 +21,6 @@ export default function PaymentVerify() {
         return;
       }
 
-      // If Khalti redirected with status=Completed or User Canceled
       if (txnStatus === "User canceled") {
         setStatus("failed");
         setMessage("Payment was cancelled.");
@@ -28,7 +28,10 @@ export default function PaymentVerify() {
       }
 
       try {
-        const res = await api.post("/api/payments/khalti/verify", { pidx, bookingId });
+        const res = await api.post("/api/payments/khalti/verify", {
+          pidx,
+          bookingId: purchaseOrderId || null
+        });
 
         if (res.data.status === "PAID") {
           setStatus("success");
@@ -41,8 +44,12 @@ export default function PaymentVerify() {
           setMessage(`Payment status: ${res.data.status}. ${res.data.message || ""}`);
         }
       } catch (err) {
+        console.error("Payment verify error:", err?.response?.data || err.message);
         setStatus("failed");
-        setMessage(err?.response?.data?.message || "Payment verification failed.");
+        setMessage(
+          err?.response?.data?.message ||
+            "Payment verification failed."
+        );
       }
     })();
   }, [searchParams]);
@@ -74,8 +81,12 @@ export default function PaymentVerify() {
             <h1 className="text-danger">Payment Failed</h1>
             <p className="muted mt-md">{message}</p>
             <div className="flex-gap mt-md" style={{ justifyContent: "center" }}>
-              <button className="btn" onClick={() => nav("/my-bookings")}>My Bookings</button>
-              <button className="btn ghost" onClick={() => nav("/pitches")}>Browse Pitches</button>
+              <button className="btn" onClick={() => nav("/my-bookings")}>
+                My Bookings
+              </button>
+              <button className="btn ghost" onClick={() => nav("/pitches")}>
+                Browse Pitches
+              </button>
             </div>
           </>
         )}

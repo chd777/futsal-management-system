@@ -36,26 +36,50 @@ router.put("/:id/cancel", auth, adminOnly, async (req, res) => {
     }
 
     const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
 
     if (booking.status === "CANCELLED") {
       return res.status(400).json({ message: "Already cancelled" });
     }
 
+    const wasPaid = booking.status === "PAID";
+
     booking.status = "CANCELLED";
     booking.cancelledAt = new Date();
     booking.cancelReason = reason.trim();
     booking.cancelledBy = "admin";
-    await booking.save();
 
-    // Send email to user with cancellation reason
-    const user = await User.findById(booking.user);
-    const pitch = await Pitch.findById(booking.pitch);
-    if (user && pitch) {
-      emailService.sendBookingCancelledByAdmin(user, booking, pitch, reason.trim()).catch(() => {});
+    if (wasPaid) {
+      booking.refundStatus = "REFUNDED";
+      booking.refundedAt = new Date();
+      booking.refundReason = "Admin cancelled a paid booking";
+    } else {
+      booking.refundStatus = "NONE";
+      booking.refundedAt = null;
+      booking.refundReason = null;
     }
 
-    res.json({ message: "Booking cancelled", booking });
+    await booking.save();
+
+    const user = await User.findById(booking.user);
+    const pitch = await Pitch.findById(booking.pitch);
+
+    if (user && pitch) {
+      emailService
+        .sendBookingCancelledByAdmin(user, booking, pitch, reason.trim(), {
+          refunded: wasPaid
+        })
+        .catch(() => {});
+    }
+
+    res.json({
+      message: wasPaid
+        ? "Paid booking cancelled and refund marked successfully."
+        : "Booking cancelled successfully.",
+      booking
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });

@@ -16,6 +16,8 @@ const paymentRoutes = require("./routes/payments.routes");
 const reviewRoutes = require("./routes/reviews.routes");
 const chatRoutes = require("./routes/chat.routes");
 const profileRoutes = require("./routes/profile.routes");
+const pitchManageRoutes = require("./routes/pitch-manage.routes");
+
 const app = express();
 
 // Parse JSON
@@ -69,6 +71,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/pitch-manage", pitchManageRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -85,7 +85,6 @@ exports.sendBookingConfirmation = async (user, booking, pitch) => {
 };
 
 // 2. New Booking - to Admin
-// 2. New Booking - to Admin
 exports.sendAdminNewBookingAlert = async (adminEmail, user, booking, pitch) => {
   const isLoyalty = booking.isLoyaltyReward;
   const html = emailTemplate("New Booking Alert 📢", `
@@ -110,7 +109,11 @@ exports.sendAdminNewBookingAlert = async (adminEmail, user, booking, pitch) => {
     <p style="color: #9aa4b2;">Check your admin dashboard for more details.</p>
   `);
 
-  return sendEmail(adminEmail, isLoyalty ? "🎉 Loyalty Reward Booking - FutsalMS" : "📢 New Booking - FutsalMS", html);
+  return sendEmail(
+    adminEmail,
+    isLoyalty ? "🎉 Loyalty Reward Booking - FutsalMS" : "📢 New Booking - FutsalMS",
+    html
+  );
 };
 
 // 3. Booking Cancelled by User - to User
@@ -134,17 +137,28 @@ exports.sendBookingCancelledByUser = async (user, booking, pitch) => {
   return sendEmail(user.email, "❌ Booking Cancelled - FutsalMS", html);
 };
 
-// 4. Booking Cancelled by Admin - to User (with reason)
-exports.sendBookingCancelledByAdmin = async (user, booking, pitch, reason) => {
-  const html = emailTemplate("Booking Cancelled by Admin", `
+// 4. Booking Cancelled by Admin - to User (with refund awareness)
+exports.sendBookingCancelledByAdmin = async (user, booking, pitch, reason, options = {}) => {
+  const refunded = options.refunded === true;
+
+  const title = refunded
+    ? "Booking Cancelled & Refunded"
+    : "Booking Cancelled by Admin";
+
+  const subject = refunded
+    ? "💸 Booking Cancelled & Refunded - FutsalMS"
+    : "⚠️ Booking Cancelled by Admin - FutsalMS";
+
+  const html = emailTemplate(title, `
     <p style="color: #9aa4b2;">Hi <strong style="color: #eef2f7;">${user.fullName}</strong>,</p>
     <p style="color: #9aa4b2;">Unfortunately, your booking has been cancelled by the admin.</p>
     
     <div style="background: #121a27; border: 1px solid #223047; border-radius: 10px; padding: 16px; margin: 20px 0;">
       <table style="width: 100%; color: #9aa4b2; font-size: 14px;">
-        <tr><td style="padding: 6px 0;">📍 Pitch</td><td style="color: #eef2f7;">${pitch.name}</td></tr>
-        <tr><td style="padding: 6px 0;">📅 Date</td><td style="color: #eef2f7;">${booking.date}</td></tr>
-        <tr><td style="padding: 6px 0;">⏰ Slot</td><td style="color: #eef2f7;">${booking.slot}</td></tr>
+        <tr><td style="padding: 6px 0;">📍 Pitch</td><td style="color: #eef2f7; font-weight: 600;">${pitch.name}</td></tr>
+        <tr><td style="padding: 6px 0;">📅 Date</td><td style="color: #eef2f7; font-weight: 600;">${booking.date}</td></tr>
+        <tr><td style="padding: 6px 0;">⏰ Slot</td><td style="color: #eef2f7; font-weight: 600;">${booking.slot}</td></tr>
+        <tr><td style="padding: 6px 0;">💰 Amount</td><td style="color: #eef2f7; font-weight: 600;">NPR ${booking.priceAtBooking}</td></tr>
       </table>
     </div>
     
@@ -152,11 +166,27 @@ exports.sendBookingCancelledByAdmin = async (user, booking, pitch, reason) => {
       <p style="color: #ff5b6e; font-weight: 600; margin: 0 0 4px;">Reason for cancellation:</p>
       <p style="color: #eef2f7; margin: 0;">${reason || "No reason provided"}</p>
     </div>
+
+    ${
+      refunded
+        ? `
+          <div style="background: rgba(61,220,151,0.1); border: 1px solid rgba(61,220,151,0.3); border-radius: 10px; padding: 14px; margin: 16px 0;">
+            <p style="color: #3ddc97; font-weight: 700; margin: 0 0 4px;">Refund Status</p>
+            <p style="color: #eef2f7; margin: 0;">Since this booking was already paid, your refund has been processed.</p>
+          </div>
+        `
+        : `
+          <div style="background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.3); border-radius: 10px; padding: 14px; margin: 16px 0;">
+            <p style="color: #f5a623; font-weight: 700; margin: 0 0 4px;">Payment Status</p>
+            <p style="color: #eef2f7; margin: 0;">This booking was not prepaid, so no refund was required.</p>
+          </div>
+        `
+    }
     
-    <p style="color: #9aa4b2;">If you have any questions, please contact us. You can book another slot anytime.</p>
+    <p style="color: #9aa4b2;">We apologize for the inconvenience. You can book another slot anytime.</p>
   `);
 
-  return sendEmail(user.email, "⚠️ Booking Cancelled by Admin - FutsalMS", html);
+  return sendEmail(user.email, subject, html);
 };
 
 // 5. Payment Successful - to User
@@ -207,4 +237,24 @@ exports.sendLoyaltyRewardEmail = async (user, booking, pitch, totalBookings) => 
   `);
 
   return sendEmail(user.email, "🎉 FREE Booking - Loyalty Reward! - FutsalMS", html);
+};
+exports.sendAdminPaymentConfirmation = async (adminEmail, user, booking, pitch) => {
+  const html = emailTemplate("Payment Received 💰", `
+    <p style="color: #9aa4b2;">A booking payment has been completed successfully.</p>
+
+    <div style="background: #121a27; border: 1px solid #223047; border-radius: 10px; padding: 16px; margin: 20px 0;">
+      <table style="width: 100%; color: #9aa4b2; font-size: 14px;">
+        <tr><td style="padding: 6px 0;">👤 Customer</td><td style="color: #eef2f7; font-weight: 600;">${user.fullName} (${user.email})</td></tr>
+        <tr><td style="padding: 6px 0;">📍 Pitch</td><td style="color: #eef2f7; font-weight: 600;">${pitch.name}</td></tr>
+        <tr><td style="padding: 6px 0;">📅 Date</td><td style="color: #eef2f7; font-weight: 600;">${booking.date}</td></tr>
+        <tr><td style="padding: 6px 0;">⏰ Slot</td><td style="color: #eef2f7; font-weight: 600;">${booking.slot}</td></tr>
+        <tr><td style="padding: 6px 0;">💰 Amount Paid</td><td style="color: #3ddc97; font-weight: 600;">NPR ${booking.priceAtBooking}</td></tr>
+        <tr><td style="padding: 6px 0;">📋 Status</td><td style="color: #3ddc97; font-weight: 600;">PAID ✅</td></tr>
+      </table>
+    </div>
+
+    <p style="color: #9aa4b2;">You can view this booking in the admin dashboard.</p>
+  `);
+
+  return sendEmail(adminEmail, "💰 Booking Payment Received - FutsalMS", html);
 };

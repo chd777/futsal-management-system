@@ -74,9 +74,13 @@ export default function AdminBookings() {
     }
   }
 
-  function statusPill(status) {
+  function statusPill(status, refundStatus) {
     if (status === "PAID") return <span className="pill paid">Paid</span>;
     if (status === "PENDING_PAYMENT") return <span className="pill pending">Pending</span>;
+    if (status === "CONFIRMED_PAY_LATER") return <span className="pill pending">Pay at Venue</span>;
+    if (status === "CANCELLED" && refundStatus === "REFUNDED") {
+      return <span className="pill cancelled">Cancelled & Refunded</span>;
+    }
     if (status === "CANCELLED") return <span className="pill cancelled">Cancelled</span>;
     return <span className="pill">{status}</span>;
   }
@@ -107,6 +111,7 @@ export default function AdminBookings() {
             <option value="">All</option>
             <option value="PENDING_PAYMENT">Pending</option>
             <option value="PAID">Paid</option>
+            <option value="CONFIRMED_PAY_LATER">Pay at Venue</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
         </label>
@@ -143,24 +148,32 @@ export default function AdminBookings() {
                   <td>{b.slot}</td>
                   <td>NPR {b.priceAtBooking}</td>
                   <td>
-                    {statusPill(b.status)}
+                    {statusPill(b.status, b.refundStatus)}
+
                     {b.cancelReason && (
-                      <div className="muted small mt-sm" style={{ maxWidth: 150 }}>
+                      <div className="muted small mt-sm" style={{ maxWidth: 180 }}>
                         Reason: {b.cancelReason}
+                      </div>
+                    )}
+
+                    {b.status === "CANCELLED" && b.refundStatus === "REFUNDED" && (
+                      <div className="muted small mt-sm" style={{ color: "var(--ok)" }}>
+                        Refund processed
                       </div>
                     )}
                   </td>
                   <td>
-                    {b.status !== "CANCELLED" && (
+                    {b.status !== "CANCELLED" ? (
                       <button
                         className="btn small danger"
                         onClick={() => openCancelModal(b)}
                       >
-                        Cancel
+                        {b.status === "PAID" ? "Cancel & Refund" : "Cancel"}
                       </button>
-                    )}
-                    {b.status === "CANCELLED" && (
-                      <span className="muted small">Cancelled</span>
+                    ) : (
+                      <span className="muted small">
+                        {b.refundStatus === "REFUNDED" ? "Cancelled & Refunded" : "Cancelled"}
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -176,10 +189,22 @@ export default function AdminBookings() {
       {cancelModal && (
         <div className="modal-overlay" onClick={() => setCancelModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Cancel Booking</h2>
+            <h2>
+              {cancelModal.status === "PAID" ? "Cancel Booking & Process Refund" : "Cancel Booking"}
+            </h2>
+
             <p className="muted mt-sm">
               {cancelModal.user?.fullName} — {cancelModal.pitch?.name} — {cancelModal.date} {cancelModal.slot}
             </p>
+
+            {cancelModal.status === "PAID" && (
+              <div
+                className="alert warn"
+                style={{ marginTop: 12, padding: "10px 12px", fontSize: 13 }}
+              >
+                This booking has already been paid. Cancelling it will also mark it as refunded.
+              </div>
+            )}
 
             <div className="mt-md">
               <label>
@@ -204,7 +229,11 @@ export default function AdminBookings() {
                 onClick={confirmCancel}
                 disabled={cancelling || !cancelReason.trim()}
               >
-                {cancelling ? "Cancelling..." : "Confirm Cancellation"}
+                {cancelling
+                  ? "Cancelling..."
+                  : cancelModal.status === "PAID"
+                    ? "Confirm Cancellation & Refund"
+                    : "Confirm Cancellation"}
               </button>
               <button className="btn ghost" onClick={() => setCancelModal(null)}>
                 Go Back

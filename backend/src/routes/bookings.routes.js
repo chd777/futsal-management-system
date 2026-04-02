@@ -5,80 +5,163 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const emailService = require("../utils/emailService");
 
-const LOYALTY_THRESHOLD = 5; // Free booking every 6th time (after 5 paid)
+const LOYALTY_THRESHOLD = 5;
 
-// Create booking
+function sortSlots(slotArray) {
+  return [...slotArray].sort((a, b) => a.localeCompare(b));
+}
+
+function buildCombinedSlotFromBookings(bookings) {
+  if (!bookings.length) return "";
+
+  const sorted = [...bookings].sort((a, b) => a.slot.localeCompare(b.slot));
+
+  if (sorted.length === 1) return sorted[0].slot;
+
+  const firstStart = sorted[0].slot.split("-")[0];
+  const lastEnd = sorted[sorted.length - 1].slot.split("-")[1];
+
+  return `${firstStart}-${lastEnd}`;
+}
+
+function buildCombinedEmailBooking(bookings) {
+  const sorted = [...bookings].sort((a, b) => a.slot.localeCompare(b.slot));
+  const first = sorted[0];
+
+  const totalPrice = sorted.reduce(
+    (sum, b) => sum + Number(b.priceAtBooking || 0),
+    0
+  );
+
+  return {
+    ...first.toObject(),
+    slot: buildCombinedSlotFromBookings(sorted),
+    priceAtBooking: totalPrice
+  };
+}
+
+// Create booking (supports single slot or multiple consecutive slots)
 router.post("/", auth, async (req, res) => {
   try {
-    const { pitchId, date, slot } = req.body;
+    const { pitchId, date, slot, slots } = req.body;
     const userId = req.user.sub;
 
-    if (!pitchId || !date || !slot) {
-      return res.status(400).json({ message: "pitchId, date, and slot are required" });
+    // Support both old (slot) and new (slots) format
+    const slotList = slots || (slot ? [slot] : []);
+
+    if (!pitchId || !date || slotList.length === 0) {
+      return res.status(400).json({
+        message: "pitchId, date, and at least one slot are required"
+      });
     }
+
+    const sortedSlotList = sortSlots(slotList);
 
     const pitch = await Pitch.findById(pitchId);
     if (!pitch) return res.status(404).json({ message: "Pitch not found" });
-    if (!pitch.isActive) return res.status(400).json({ message: "This pitch is currently unavailable" });
-
-    // Check for existing non-cancelled booking
-    const existing = await Booking.findOne({
-      pitch: pitchId,
-      date,
-      slot,
-      status: { $ne: "CANCELLED" }
-    });
-    if (existing) {
-      return res.status(409).json({ message: "This slot is already booked" });
+    if (!pitch.isActive) {
+      return res.status(400).json({ message: "This pitch is currently unavailable" });
     }
 
-    // Check loyalty - count completed bookings for this user on this pitch
+    // Check all slots for existing bookings
+    for (const s of sortedSlotList) {
+      const existing = await Booking.findOne({
+        pitch: pitchId,
+        date,
+        slot: s,
+        status: { $ne: "CANCELLED" }
+      });
+
+      if (existing) {
+        return res.status(409).json({ message: `Slot ${s} is already booked` });
+      }
+    }
+
+    // Check loyalty
     const completedCount = await Booking.countDocuments({
       user: userId,
       pitch: pitchId,
       status: { $in: ["PAID", "CONFIRMED_PAY_LATER"] }
     });
 
-    const isLoyaltyReward = completedCount > 0 && completedCount % LOYALTY_THRESHOLD === 0;
+    const isLoyaltyReward =
+      completedCount > 0 && completedCount % LOYALTY_THRESHOLD === 0;
 
-    const booking = await Booking.create({
-      user: userId,
-      pitch: pitchId,
-      date,
-      slot,
-      priceAtBooking: isLoyaltyReward ? 0 : pitch.pricePerHour,
-      status: isLoyaltyReward ? "PAID" : "PENDING_PAYMENT",
-      isLoyaltyReward: isLoyaltyReward,
-      paidAt: isLoyaltyReward ? new Date() : null
-    });
+    // IMPORTANT: create one bookingGroup for the whole request
+    const bookingGroup =
+      sortedSlotList.length > 1
+        ? `BG-${pitchId}-${date}-${userId}-${Date.now()}`
+        : null;
 
-    // Send email notification to user
+    // Create bookings for all selected slots
+    const createdBookings = [];
+    for (let i = 0; i < sortedSlotList.length; i++) {
+      const isThisLoyalty = i === 0 && isLoyaltyReward;
+
+      const booking = await Booking.create({
+        user: userId,
+        pitch: pitchId,
+        date,
+        slot: sortedSlotList[i],
+        priceAtBooking: isThisLoyalty ? 0 : pitch.pricePerHour,
+        status: isThisLoyalty ? "PAID" : "PENDING_PAYMENT",
+        isLoyaltyReward: isThisLoyalty,
+        paidAt: isThisLoyalty ? new Date() : null,
+        bookingGroup
+      });
+
+      createdBookings.push(booking);
+    }
+
+    // Build combined booking object for emails and response summary
+    const combinedEmailBooking = buildCombinedEmailBooking(createdBookings);
+
+    // Send email for the booking
     const user = await User.findById(userId);
     if (user) {
       if (isLoyaltyReward) {
-        // Send special loyalty reward email
-        emailService.sendLoyaltyRewardEmail(user, booking, pitch, completedCount).catch(() => {});
+        emailService
+          .sendLoyaltyRewardEmail(user, combinedEmailBooking, pitch, completedCount)
+          .catch(() => {});
       } else {
-        emailService.sendBookingConfirmation(user, booking, pitch).catch(() => {});
+        emailService
+          .sendBookingConfirmation(user, combinedEmailBooking, pitch)
+          .catch(() => {});
       }
     }
 
-    // Send email notification to admin(s)
+    // Notify admin
     const admins = await User.find({ role: "admin" }).select("email");
     for (const admin of admins) {
-      emailService.sendAdminNewBookingAlert(admin.email, user, booking, pitch).catch(() => {});
+      emailService
+        .sendAdminNewBookingAlert(admin.email, user, combinedEmailBooking, pitch)
+        .catch(() => {});
     }
 
+    const totalPrice = createdBookings.reduce(
+      (sum, b) => sum + b.priceAtBooking,
+      0
+    );
+
     res.status(201).json({
-      booking,
+      bookings: createdBookings,
+      booking: createdBookings[0], // backward compatibility
+      bookingGroup,
       isLoyaltyReward,
+      totalSlots: sortedSlotList.length,
+      totalPrice,
+      combinedSlot: combinedEmailBooking.slot,
       message: isLoyaltyReward
-        ? "🎉 Congratulations! This booking is FREE as a loyalty reward! You've earned it after 5 bookings."
-        : "Booking created successfully"
+        ? "🎉 Congratulations! This booking is FREE as a loyalty reward!"
+        : sortedSlotList.length > 1
+          ? `${sortedSlotList.length} slots booked successfully! Total: NPR ${totalPrice}`
+          : "Booking created successfully"
     });
   } catch (err) {
     if (err.code === 11000) {
-      return res.status(409).json({ message: "This slot is already booked (duplicate)" });
+      return res.status(409).json({
+        message: "One or more slots are already booked"
+      });
     }
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -89,7 +172,7 @@ router.post("/", auth, async (req, res) => {
 router.get("/my", auth, async (req, res) => {
   try {
     const bookings = await Booking.find({ user: req.user.sub })
-      .populate("pitch", "name address pricePerHour")
+      .populate("pitch", "name address pricePerHour image")
       .sort({ date: -1, slot: -1 });
 
     res.json({ bookings });
@@ -128,21 +211,27 @@ router.get("/loyalty/:pitchId", auth, async (req, res) => {
 // Cancel booking (user)
 router.put("/:id/cancel", auth, async (req, res) => {
   try {
-    const booking = await Booking.findOne({ _id: req.params.id, user: req.user.sub });
+    const booking = await Booking.findOne({
+      _id: req.params.id,
+      user: req.user.sub
+    });
+
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
     if (booking.status === "CANCELLED") {
       return res.status(400).json({ message: "Already cancelled" });
     }
+
     if (booking.status === "PAID" && !booking.isLoyaltyReward) {
-      return res.status(400).json({ message: "Cannot cancel a paid booking. Contact admin." });
+      return res.status(400).json({
+        message: "Cannot cancel a paid booking. Contact admin."
+      });
     }
 
     booking.status = "CANCELLED";
     booking.cancelledAt = new Date();
     await booking.save();
 
-    // Send cancellation email to user
     const user = await User.findById(req.user.sub);
     const pitch = await Pitch.findById(booking.pitch);
     if (user && pitch) {

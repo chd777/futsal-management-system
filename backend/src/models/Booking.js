@@ -13,12 +13,20 @@ const bookingSchema = new mongoose.Schema(
       default: "PENDING_PAYMENT"
     },
     isLoyaltyReward: { type: Boolean, default: false },
+    bookingGroup: { type: String, default: null },
     khaltiPidx: { type: String, default: null },
     khaltiTxnId: { type: String, default: null },
     paidAt: { type: Date, default: null },
     cancelledAt: { type: Date, default: null },
     cancelReason: { type: String, default: null },
-    cancelledBy: { type: String, enum: ["user", "admin", null], default: null }
+    cancelledBy: { type: String, enum: ["user", "admin", null], default: null },
+    refundStatus: {
+      type: String,
+      enum: ["NONE", "PENDING", "REFUNDED"],
+      default: "NONE"
+    },
+    refundedAt: { type: Date, default: null },
+    refundReason: { type: String, default: null }
   },
   { timestamps: true }
 );

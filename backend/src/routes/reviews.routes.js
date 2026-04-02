@@ -1,9 +1,26 @@
 const router = require("express").Router();
 const Review = require("../models/Review");
 const Booking = require("../models/Booking");
+const Pitch = require("../models/Pitch");
 const auth = require("../middleware/auth");
 
-// POST /api/reviews - create a review (only after PAID booking)
+// helper: recalculate pitch rating stats
+async function updatePitchRatingStats(pitchId) {
+  const reviews = await Review.find({ pitch: pitchId });
+
+  const reviewCount = reviews.length;
+  const avgRating =
+    reviewCount > 0
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
+      : 0;
+
+  await Pitch.findByIdAndUpdate(pitchId, {
+    avgRating,
+    reviewCount
+  });
+}
+
+// POST /api/reviews - create a review (after completed booking)
 router.post("/", auth, async (req, res) => {
   try {
     const { bookingId, rating, comment } = req.body;
@@ -17,19 +34,22 @@ router.post("/", auth, async (req, res) => {
       return res.status(400).json({ message: "Rating must be between 1 and 5" });
     }
 
-    // Verify the booking exists, belongs to user, and is PAID
     const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
 
     if (booking.user.toString() !== userId) {
       return res.status(403).json({ message: "Not your booking" });
     }
 
-    if (booking.status !== "PAID") {
-      return res.status(400).json({ message: "Can only review completed (paid) bookings" });
+    // allow PAID and pay-later completed bookings if you want
+    if (booking.status !== "PAID" && booking.status !== "CONFIRMED_PAY_LATER") {
+      return res.status(400).json({
+        message: "Can only review completed bookings"
+      });
     }
 
-    // Check if already reviewed
     const existingReview = await Review.findOne({ booking: bookingId });
     if (existingReview) {
       return res.status(409).json({ message: "You have already reviewed this booking" });
@@ -42,6 +62,8 @@ router.post("/", auth, async (req, res) => {
       rating: Number(rating),
       comment: comment || ""
     });
+
+    await updatePitchRatingStats(booking.pitch);
 
     res.status(201).json({ review });
   } catch (err) {
@@ -72,7 +94,9 @@ router.get("/my", auth, async (req, res) => {
   try {
     const reviews = await Review.find({ user: req.user.sub })
       .populate("pitch", "name")
+      .populate("booking", "_id")
       .sort({ createdAt: -1 });
+
     res.json({ reviews });
   } catch (err) {
     console.error(err);
