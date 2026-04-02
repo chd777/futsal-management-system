@@ -1,9 +1,11 @@
 import AdminClosures from "./pages/AdminClosures";
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import AboutUs from "./pages/AboutUs";
+import ContactUs from "./pages/ContactUs";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 import AdminRoute from "./auth/AdminRoute";
@@ -15,6 +17,8 @@ import AdminBookings from "./pages/AdminBookings";
 import AdminRevenue from "./pages/AdminRevenue";
 
 import UserLayout from "./components/UserLayout";
+import PublicLayout from "./components/PublicLayout";
+
 import Home from "./pages/Home";
 import BrowsePitches from "./pages/BrowsePitches";
 import PitchDetail from "./pages/PitchDetail";
@@ -39,12 +43,19 @@ function UserPage({ children }) {
   );
 }
 
+function PublicPage({ children }) {
+  return <PublicLayout>{children}</PublicLayout>;
+}
+
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/login" element={<Login />} />
+      {/* Public Routes */}
+      <Route path="/" element={<PublicPage><AboutUs /></PublicPage>} />
+      <Route path="/about" element={<PublicPage><AboutUs /></PublicPage>} />
+      <Route path="/contact" element={<PublicPage><ContactUs /></PublicPage>} />
+      <Route path="/login" element={<PublicPage><Login /></PublicPage>} />
+      <Route path="/register" element={<PublicPage><Register /></PublicPage>} />
 
       {/* Pitch Owner Management - PIN based, no login required */}
       <Route path="/pitch-manage" element={<PitchManage />} />
