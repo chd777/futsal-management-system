@@ -6,12 +6,10 @@ export default function AdminBookings() {
   const [pitches, setPitches] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
   const [filterPitch, setFilterPitch] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
-  // Cancel modal
   const [cancelModal, setCancelModal] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
@@ -56,9 +54,10 @@ export default function AdminBookings() {
 
   async function confirmCancel() {
     if (!cancelReason.trim()) {
-      alert("Please provide a reason for cancellation");
+      alert("Please provide a reason");
       return;
     }
+
     setCancelling(true);
     try {
       await api.put(`/api/admin/bookings/${cancelModal._id}/cancel`, {
@@ -72,6 +71,19 @@ export default function AdminBookings() {
     } finally {
       setCancelling(false);
     }
+  }
+
+  // ✅ NEW FUNCTION (IMPORTANT)
+  function isPastBooking(booking) {
+    const now = new Date();
+
+    const [endHour, endMinute] = booking.slot.split("-")[1].split(":");
+
+    const bookingEnd = new Date(
+      `${booking.date}T${endHour}:${endMinute}:00`
+    );
+
+    return bookingEnd <= now;
   }
 
   function statusPill(status, refundStatus) {
@@ -101,10 +113,12 @@ export default function AdminBookings() {
             ))}
           </select>
         </label>
+
         <label>
           Date
           <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
         </label>
+
         <label>
           Status
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
@@ -117,9 +131,9 @@ export default function AdminBookings() {
         </label>
       </div>
 
-      {/* Bookings Table */}
+      {/* Table */}
       {loading ? (
-        <div className="loading-spinner">Loading bookings...</div>
+        <div className="loading-spinner">Loading...</div>
       ) : bookings.length === 0 ? (
         <div className="empty-state">No bookings found.</div>
       ) : (
@@ -136,34 +150,25 @@ export default function AdminBookings() {
                 <th>Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {bookings.map(b => (
                 <tr key={b._id}>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{b.user?.fullName || "N/A"}</div>
+                    <div style={{ fontWeight: 600 }}>{b.user?.fullName}</div>
                     <div className="muted small">{b.user?.email}</div>
                   </td>
-                  <td>{b.pitch?.name || "N/A"}</td>
+
+                  <td>{b.pitch?.name}</td>
                   <td>{b.date}</td>
                   <td>{b.slot}</td>
                   <td>NPR {b.priceAtBooking}</td>
-                  <td>
-                    {statusPill(b.status, b.refundStatus)}
 
-                    {b.cancelReason && (
-                      <div className="muted small mt-sm" style={{ maxWidth: 180 }}>
-                        Reason: {b.cancelReason}
-                      </div>
-                    )}
+                  <td>{statusPill(b.status, b.refundStatus)}</td>
 
-                    {b.status === "CANCELLED" && b.refundStatus === "REFUNDED" && (
-                      <div className="muted small mt-sm" style={{ color: "var(--ok)" }}>
-                        Refund processed
-                      </div>
-                    )}
-                  </td>
                   <td>
-                    {b.status !== "CANCELLED" ? (
+                    {/* ✅ FIXED LOGIC HERE */}
+                    {b.status !== "CANCELLED" && !isPastBooking(b) ? (
                       <button
                         className="btn small danger"
                         onClick={() => openCancelModal(b)}
@@ -172,7 +177,7 @@ export default function AdminBookings() {
                       </button>
                     ) : (
                       <span className="muted small">
-                        {b.refundStatus === "REFUNDED" ? "Cancelled & Refunded" : "Cancelled"}
+                        {isPastBooking(b) ? "Completed" : "Cancelled"}
                       </span>
                     )}
                   </td>
@@ -183,60 +188,28 @@ export default function AdminBookings() {
         </div>
       )}
 
-      <p className="muted small mt-md">Total: {bookings.length} booking(s)</p>
-
-      {/* Cancel Reason Modal */}
+      {/* Modal */}
       {cancelModal && (
         <div className="modal-overlay" onClick={() => setCancelModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>
-              {cancelModal.status === "PAID" ? "Cancel Booking & Process Refund" : "Cancel Booking"}
-            </h2>
+            <h2>Cancel Booking</h2>
 
             <p className="muted mt-sm">
-              {cancelModal.user?.fullName} — {cancelModal.pitch?.name} — {cancelModal.date} {cancelModal.slot}
+              {cancelModal.user?.fullName} — {cancelModal.date} {cancelModal.slot}
             </p>
 
-            {cancelModal.status === "PAID" && (
-              <div
-                className="alert warn"
-                style={{ marginTop: 12, padding: "10px 12px", fontSize: 13 }}
-              >
-                This booking has already been paid. Cancelling it will also mark it as refunded.
-              </div>
-            )}
-
-            <div className="mt-md">
-              <label>
-                Reason for cancellation <span style={{ color: "var(--danger)" }}>*</span>
-                <textarea
-                  value={cancelReason}
-                  onChange={e => setCancelReason(e.target.value)}
-                  placeholder="e.g. Pitch maintenance, Weather conditions, Holiday closure..."
-                  rows={3}
-                  style={{ marginTop: 6 }}
-                />
-              </label>
-            </div>
-
-            <p className="muted small mt-sm">
-              The customer will receive an email notification with this reason.
-            </p>
+            <textarea
+              value={cancelReason}
+              onChange={e => setCancelReason(e.target.value)}
+              placeholder="Reason..."
+            />
 
             <div className="flex-gap mt-md">
-              <button
-                className="btn danger"
-                onClick={confirmCancel}
-                disabled={cancelling || !cancelReason.trim()}
-              >
-                {cancelling
-                  ? "Cancelling..."
-                  : cancelModal.status === "PAID"
-                    ? "Confirm Cancellation & Refund"
-                    : "Confirm Cancellation"}
+              <button className="btn danger" onClick={confirmCancel}>
+                Confirm
               </button>
               <button className="btn ghost" onClick={() => setCancelModal(null)}>
-                Go Back
+                Back
               </button>
             </div>
           </div>

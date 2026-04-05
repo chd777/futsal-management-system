@@ -7,15 +7,12 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-  Legend
+  Tooltip
 } from "recharts";
 
 export default function PitchManage() {
   const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [pitch, setPitch] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -105,7 +102,10 @@ export default function PitchManage() {
   function switchTab(tab) {
     setActiveTab(tab);
     if (tab === "bookings") loadBookings();
-    if (tab === "revenue") loadRevenue();
+    if (tab === "revenue") {
+      loadRevenue();
+      loadBookings();
+    }
     if (tab === "closures") loadClosures();
   }
 
@@ -230,9 +230,7 @@ export default function PitchManage() {
       }));
   }, [revenue]);
 
-  const revenueStatusPieData = useMemo(() => {
-    if (!bookings.length) return [];
-
+  const bookingStatusSummary = useMemo(() => {
     const summary = {
       PAID: 0,
       CONFIRMED_PAY_LATER: 0,
@@ -245,14 +243,17 @@ export default function PitchManage() {
     });
 
     return [
-      { name: "Paid", value: summary.PAID },
-      { name: "Pay at Venue", value: summary.CONFIRMED_PAY_LATER },
-      { name: "Pending", value: summary.PENDING_PAYMENT },
-      { name: "Cancelled", value: summary.CANCELLED }
-    ].filter((item) => item.value > 0);
+      { label: "Paid", value: summary.PAID, color: "var(--ok)" },
+      { label: "Pay at Venue", value: summary.CONFIRMED_PAY_LATER, color: "#f0b44c" },
+      { label: "Pending", value: summary.PENDING_PAYMENT, color: "var(--accent)" },
+      { label: "Cancelled", value: summary.CANCELLED, color: "var(--danger)" }
+    ];
   }, [bookings]);
 
-  const PIE_COLORS = ["#3ddc97", "#f0b44c", "#5b8cff", "#ff6b7a"];
+  const nextClosure = useMemo(() => {
+    if (!closures.length) return null;
+    return [...closures].sort((a, b) => a.date.localeCompare(b.date))[0];
+  }, [closures]);
 
   if (!pitch) {
     return (
@@ -269,75 +270,108 @@ export default function PitchManage() {
         <div
           className="card"
           style={{
-            maxWidth: 440,
+            maxWidth: 460,
             width: "100%",
-            textAlign: "center",
-            padding: "34px 30px",
-            borderRadius: 20,
-            border: "1px solid rgba(91,140,255,0.18)",
-            background: "rgba(10,15,24,0.88)",
-            boxShadow: "0 18px 50px rgba(0,0,0,0.35)"
+            padding: "36px 34px",
+            borderRadius: 22,
+            border: "1px solid rgba(91,140,255,0.14)",
+            background: "rgba(10,15,24,0.92)",
+            boxShadow: "0 22px 60px rgba(0,0,0,0.35)"
           }}
         >
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              margin: "0 auto 18px",
-              borderRadius: 16,
-              display: "grid",
-              placeItems: "center",
-              border: "1px solid rgba(91,140,255,0.22)",
-              background: "linear-gradient(135deg, rgba(91,140,255,0.18), rgba(91,140,255,0.06))"
-            }}
-          >
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
             <div
               style={{
-                width: 22,
-                height: 22,
-                borderRadius: 6,
-                border: "2px solid #5b8cff"
+                fontSize: 13,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "var(--muted)",
+                marginBottom: 10
               }}
-            />
-          </div>
+            >
+              Secure Owner Access
+            </div>
 
-          <h1 style={{ marginBottom: 8 }}>Pitch Management</h1>
-          <p className="muted" style={{ lineHeight: 1.7 }}>
-            Enter your 6-digit management PIN to access your pitch dashboard.
-          </p>
+            <h1 style={{ marginBottom: 10 }}>Pitch Management</h1>
+
+            <p
+              className="muted"
+              style={{
+                lineHeight: 1.7,
+                maxWidth: 320,
+                margin: "0 auto"
+              }}
+            >
+              Securely access your pitch dashboard using your 6-digit management PIN.
+            </p>
+          </div>
 
           {error && <div className="alert error">{error}</div>}
 
-          <form onSubmit={handleLogin} className="form" style={{ marginTop: 22 }}>
+          <form onSubmit={handleLogin} className="form" style={{ marginTop: 20 }}>
             <label style={{ textAlign: "left" }}>
               Management PIN
-              <input
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-                placeholder="Enter 6-digit PIN"
-                maxLength={6}
-                style={{
-                  textAlign: "center",
-                  fontSize: 28,
-                  letterSpacing: 10,
-                  fontWeight: 800,
-                  padding: "16px 18px",
-                  borderRadius: 16
-                }}
-                required
-              />
+              <div style={{ position: "relative", marginTop: 8 }}>
+                <input
+                  type={showPin ? "text" : "password"}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Enter 6-digit PIN"
+                  maxLength={6}
+                  inputMode="numeric"
+                  style={{
+                    width: "100%",
+                    textAlign: "center",
+                    fontSize: 22,
+                    letterSpacing: 6,
+                    fontWeight: 700,
+                    padding: "16px 74px 16px 18px",
+                    borderRadius: 16,
+                    boxSizing: "border-box"
+                  }}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin((prev) => !prev)}
+                  style={{
+                    position: "absolute",
+                    right: 16,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--accent)",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    padding: 0
+                  }}
+                >
+                  {showPin ? "Hide" : "Show"}
+                </button>
+              </div>
             </label>
 
             <button
-              className="btn auth-btn"
+              className="btn"
               disabled={loading || pin.length < 6}
-              style={{ marginTop: 6 }}
+              style={{
+                width: "100%",
+                marginTop: 8,
+                padding: "14px 18px",
+                borderRadius: 14,
+                fontWeight: 700
+              }}
             >
               {loading ? "Verifying..." : "Access Dashboard"}
             </button>
           </form>
 
-          <p className="muted small" style={{ marginTop: 18 }}>
+          <p
+            className="muted small"
+            style={{ marginTop: 18, textAlign: "center" }}
+          >
             Contact the platform admin if you do not have a management PIN.
           </p>
         </div>
@@ -692,10 +726,7 @@ export default function PitchManage() {
             {bookingsLoading ? (
               <div className="loading-spinner">Loading...</div>
             ) : filteredBookings.length === 0 ? (
-              <div className="empty-state">
-                <div style={{ fontSize: 40 }}>📭</div>
-                No bookings found for the selected filters.
-              </div>
+              <div className="empty-state">No bookings found for the selected filters.</div>
             ) : (
               <div
                 className="table-wrap mt-md"
@@ -825,80 +856,91 @@ export default function PitchManage() {
                       <div className="empty-state">No monthly revenue data yet.</div>
                     ) : (
                       <div style={{ width: "100%", height: 320 }}>
-                       <ResponsiveContainer>
-  <BarChart data={monthlyRevenueChartData} barCategoryGap={40}>
-    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-    <XAxis
-      dataKey="month"
-      tick={{ fill: "#9aa4b2", fontSize: 12 }}
-      axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
-      tickLine={false}
-    />
-    <YAxis
-      tick={{ fill: "#9aa4b2", fontSize: 12 }}
-      axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
-      tickLine={false}
-    />
-    <Tooltip
-      contentStyle={{
-        background: "#0f1724",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: "10px",
-        color: "#eef2f7"
-      }}
-      labelStyle={{ color: "#eef2f7" }}
-      cursor={{ fill: "rgba(91,140,255,0.08)" }}
-      formatter={(value) => [`NPR ${Number(value).toLocaleString()}`, "Revenue"]}
-    />
-    <Bar
-      dataKey="revenue"
-      fill="#5b8cff"
-      radius={[10, 10, 0, 0]}
-      maxBarSize={80}
-    />
-  </BarChart>
-</ResponsiveContainer>
+                        <ResponsiveContainer>
+                          <BarChart data={monthlyRevenueChartData} barCategoryGap={40}>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="rgba(255,255,255,0.06)"
+                            />
+                            <XAxis
+                              dataKey="month"
+                              tick={{ fill: "#9aa4b2", fontSize: 12 }}
+                              axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{ fill: "#9aa4b2", fontSize: 12 }}
+                              axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
+                              tickLine={false}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                background: "#0f1724",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                borderRadius: "10px",
+                                color: "#eef2f7"
+                              }}
+                              labelStyle={{ color: "#eef2f7" }}
+                              cursor={{ fill: "rgba(91,140,255,0.08)" }}
+                              formatter={(value) => [
+                                `NPR ${Number(value).toLocaleString()}`,
+                                "Revenue"
+                              ]}
+                            />
+                            <Bar
+                              dataKey="revenue"
+                              fill="#5b8cff"
+                              radius={[10, 10, 0, 0]}
+                              maxBarSize={80}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
                     )}
                   </div>
 
                   <div className="panel">
-                    <h3 style={{ marginBottom: 14 }}>Booking Status Distribution</h3>
-                    {revenueStatusPieData.length === 0 ? (
-                      <div className="empty-state">No booking status data yet.</div>
-                    ) : (
-                      <div style={{ width: "100%", height: 320 }}>
-                        <ResponsiveContainer>
-  <PieChart>
-    <Pie
-      data={revenueStatusPieData}
-      cx="50%"
-      cy="45%"
-      outerRadius={88}
-      innerRadius={42}
-      paddingAngle={3}
-      dataKey="value"
-      nameKey="name"
-      label={({ value }) => value}
-    >
-      {revenueStatusPieData.map((entry, index) => (
-        <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-      ))}
-    </Pie>
-    <Tooltip
-      contentStyle={{
-        background: "#0f1724",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: "10px",
-        color: "#eef2f7"
-      }}
-      labelStyle={{ color: "#eef2f7" }}
-    />
-    <Legend wrapperStyle={{ color: "#9aa4b2", paddingTop: 16 }} />
-  </PieChart>
-</ResponsiveContainer>
-                      </div>
-                    )}
+                    <h3 style={{ marginBottom: 14 }}>Booking Status Summary</h3>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: 10
+                      }}
+                    >
+                      {bookingStatusSummary.map((item) => (
+                        <div
+                          key={item.label}
+                          className="flex-between"
+                          style={{
+                            padding: "12px 0",
+                            borderBottom: "1px solid var(--border)"
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span
+                              style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: "50%",
+                                background: item.color,
+                                display: "inline-block"
+                              }}
+                            />
+                            <span className="muted">{item.label}</span>
+                          </div>
+
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              color: "var(--text-primary)"
+                            }}
+                          >
+                            {item.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -913,7 +955,7 @@ export default function PitchManage() {
                             key={month}
                             className="flex-between"
                             style={{
-                              padding: "8px 0",
+                              padding: "10px 0",
                               borderBottom: "1px solid var(--border)"
                             }}
                           >
@@ -933,13 +975,23 @@ export default function PitchManage() {
 
         {activeTab === "closures" && (
           <div>
-            <h2>Closures & Holidays</h2>
+            <div className="flex-between" style={{ alignItems: "center", marginBottom: 14 }}>
+              <h2>Closures & Holidays</h2>
+              <div className="muted small">
+                {closures.length} scheduled closure{closures.length !== 1 ? "s" : ""}
+              </div>
+            </div>
 
-            <div className="panel mt-md">
-              <h3 style={{ marginBottom: 10 }}>Add Closure</h3>
-              {closureMsg && <div className="alert ok">{closureMsg}</div>}
-              <form onSubmit={addClosure} className="form">
-                <div className="grid2">
+            <div className="grid2 mt-md">
+              <div className="panel">
+                <h3 style={{ marginBottom: 10 }}>Add Closure</h3>
+                <p className="muted small" style={{ marginBottom: 14 }}>
+                  Block the pitch for maintenance, holidays, or private use.
+                </p>
+
+                {closureMsg && <div className="alert ok">{closureMsg}</div>}
+
+                <form onSubmit={addClosure} className="form">
                   <label>
                     Date
                     <input
@@ -952,6 +1004,7 @@ export default function PitchManage() {
                       required
                     />
                   </label>
+
                   <label>
                     Reason
                     <input
@@ -963,37 +1016,69 @@ export default function PitchManage() {
                       required
                     />
                   </label>
+
+                  <button className="btn">Add Closure</button>
+                </form>
+              </div>
+
+              <div className="panel">
+                <h3 style={{ marginBottom: 10 }}>Closure Summary</h3>
+                <div style={{ display: "grid", gap: 14 }}>
+                  <div className="card" style={{ padding: 16 }}>
+                    <div className="muted small">Total Scheduled Closures</div>
+                    <div
+                      style={{
+                        fontSize: 28,
+                        fontWeight: 800,
+                        marginTop: 6,
+                        color: "var(--accent)"
+                      }}
+                    >
+                      {closures.length}
+                    </div>
+                  </div>
+
+                  <div className="card" style={{ padding: 16 }}>
+                    <div className="muted small">Next Upcoming Closure</div>
+                    <div style={{ marginTop: 6, fontWeight: 700 }}>
+                      {nextClosure ? nextClosure.date : "No upcoming closure"}
+                    </div>
+                    <div className="muted small" style={{ marginTop: 6 }}>
+                      {nextClosure ? nextClosure.reason : "Pitch remains open as scheduled."}
+                    </div>
+                  </div>
                 </div>
-                <button className="btn">Add Closure</button>
-              </form>
+              </div>
             </div>
 
-            <h3 className="mt-md">Upcoming Closures ({closures.length})</h3>
-            {closuresLoading ? (
-              <div className="loading-spinner">Loading...</div>
-            ) : closures.length === 0 ? (
-              <div className="empty-state mt-sm">
-                <div style={{ fontSize: 40 }}>📅</div>
-                No closures. Pitch is open every day.
-              </div>
-            ) : (
-              <div className="list mt-sm">
-                {closures.map((c) => (
-                  <div key={c._id} className="list-item">
-                    <div>
-                      <div className="list-title">{c.date}</div>
-                      <div className="muted small">{c.reason}</div>
-                    </div>
-                    <button
-                      className="btn small danger"
-                      onClick={() => removeClosure(c._id)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="panel mt-md">
+              <h3 style={{ marginBottom: 14 }}>Upcoming Closures</h3>
+              {closuresLoading ? (
+                <div className="loading-spinner">Loading...</div>
+              ) : closures.length === 0 ? (
+                <div className="empty-state">No closures. Pitch is open every day.</div>
+              ) : (
+                <div className="list mt-sm">
+                  {closures
+                    .slice()
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .map((c) => (
+                      <div key={c._id} className="list-item">
+                        <div>
+                          <div className="list-title">{c.date}</div>
+                          <div className="muted small">{c.reason}</div>
+                        </div>
+                        <button
+                          className="btn small danger"
+                          onClick={() => removeClosure(c._id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

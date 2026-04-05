@@ -6,7 +6,7 @@ const auth = require("../middleware/auth");
 const adminOnly = require("../middleware/adminOnly");
 const emailService = require("../utils/emailService");
 
-// GET /api/admin/bookings?pitch=xxx&date=YYYY-MM-DD&status=PAID
+// GET bookings
 router.get("/", auth, adminOnly, async (req, res) => {
   try {
     const filter = {};
@@ -26,7 +26,7 @@ router.get("/", auth, adminOnly, async (req, res) => {
   }
 });
 
-// PUT /api/admin/bookings/:id/cancel
+// ✅ UPDATED CANCEL ROUTE
 router.put("/:id/cancel", auth, adminOnly, async (req, res) => {
   try {
     const { reason } = req.body;
@@ -43,6 +43,24 @@ router.put("/:id/cancel", auth, adminOnly, async (req, res) => {
     if (booking.status === "CANCELLED") {
       return res.status(400).json({ message: "Already cancelled" });
     }
+
+    // 🔥 TIME VALIDATION START (IMPORTANT)
+    const now = new Date();
+
+    // slot example: "17:00-18:00"
+    const [startHour, startMinute] = booking.slot.split("-")[0].split(":");
+
+    const startTime = new Date(`${booking.date}T${startHour}:${startMinute}:00`);
+
+    // allow cancel only before 1 hour
+    const cutoff = new Date(startTime.getTime() - 60 * 60 * 1000);
+
+    if (now > cutoff) {
+      return res.status(400).json({
+        message: "Cancellation not allowed (less than 1 hour before match or already started)"
+      });
+    }
+    // 🔥 TIME VALIDATION END
 
     const wasPaid = booking.status === "PAID";
 
@@ -80,6 +98,7 @@ router.put("/:id/cancel", auth, adminOnly, async (req, res) => {
         : "Booking cancelled successfully.",
       booking
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
