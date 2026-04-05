@@ -5,7 +5,14 @@ import { api } from "../api/axios";
 
 export default function Home() {
   const { user } = useContext(AuthContext);
-  const [stats, setStats] = useState({ total: 0, upcoming: 0, paid: 0, cancelled: 0, totalSpent: 0, freeEarned: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    upcoming: 0,
+    paid: 0,
+    cancelled: 0,
+    totalSpent: 0,
+    freeEarned: 0
+  });
   const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [nextBooking, setNextBooking] = useState(null);
@@ -14,6 +21,13 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [loyaltyModal, setLoyaltyModal] = useState(false);
   const [loyaltyData, setLoyaltyData] = useState([]);
+
+  // NEW INSIGHTS STATE
+  const [insights, setInsights] = useState({
+    trendingPitches: [],
+    peakSlots: [],
+    totalCompletedBookings: 0
+  });
 
   useEffect(() => {
     (async () => {
@@ -47,7 +61,6 @@ export default function Home() {
           setNextBooking(sortedUpcoming[0]);
         }
 
-        // Build loyalty data per pitch
         const pitchCount = {};
         for (const b of paid) {
           const id = b.pitch?._id || "unknown";
@@ -68,6 +81,10 @@ export default function Home() {
 
         const sortedAll = [...bookings].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setRecentActivity(sortedAll.slice(0, 5));
+
+        // NEW INSIGHTS CALL
+        const insightsRes = await api.get("/api/insights/user-dashboard");
+        setInsights(insightsRes.data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -76,7 +93,6 @@ export default function Home() {
     })();
   }, []);
 
-  // Live countdown with auto-switch
   useEffect(() => {
     if (!nextBooking) return;
 
@@ -146,20 +162,27 @@ export default function Home() {
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     if (dateStr === today) return "Today";
     if (dateStr === tomorrow) return "Tomorrow";
-    return new Date(dateStr).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric"
+    });
   }
 
   return (
     <div>
-      {/* Next Booking Highlight */}
       {nextBooking && !loading && (
         <section style={{
           padding: "20px 24px",
           background: "linear-gradient(135deg, rgba(91,140,255,0.15), rgba(61,220,151,0.08))",
           border: "1px solid rgba(91,140,255,0.25)",
-          borderRadius: 16, marginBottom: 14,
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          flexWrap: "wrap", gap: 16
+          borderRadius: 16,
+          marginBottom: 14,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 16
         }}>
           <div>
             <div className="muted small" style={{ marginBottom: 4 }}>⏰ YOUR NEXT GAME</div>
@@ -172,7 +195,8 @@ export default function Home() {
           <div style={{ textAlign: "center" }}>
             <div className="muted small" style={{ marginBottom: 4 }}>STARTS IN</div>
             <div style={{
-              fontSize: 28, fontWeight: 900,
+              fontSize: 28,
+              fontWeight: 900,
               color: countdown === "Happening now!" ? "var(--ok)" : "var(--accent)",
               letterSpacing: 1
             }}>{countdown}</div>
@@ -181,11 +205,12 @@ export default function Home() {
         </section>
       )}
 
-      {/* Hero Section */}
       <section className="panel" style={{
         padding: "22px",
         background: "linear-gradient(135deg, rgba(59,130,246,0.18), rgba(34,197,94,0.10), rgba(15,23,42,1))",
-        border: "1px solid var(--border)", overflow: "hidden", position: "relative"
+        border: "1px solid var(--border)",
+        overflow: "hidden",
+        position: "relative"
       }}>
         <div className="hero-grid">
           <div>
@@ -215,13 +240,14 @@ export default function Home() {
             </div>
             <div className="hero-mini-card">
               <div className="hero-mini-label">Total Spent</div>
-              <div className="hero-mini-value" style={{ fontSize: 18 }}>{loading ? "..." : `NPR ${stats.totalSpent.toLocaleString()}`}</div>
+              <div className="hero-mini-value" style={{ fontSize: 18 }}>
+                {loading ? "..." : `NPR ${stats.totalSpent.toLocaleString()}`}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Quick Action Cards */}
       <section className="mt-lg">
         <div className="quick-grid">
           <Link to="/pitches" className="panel quick-card" style={{ textDecoration: "none", color: "inherit" }}>
@@ -236,7 +262,6 @@ export default function Home() {
             <p className="muted mt-sm">View your upcoming matches, payment status, and booking history.</p>
           </Link>
 
-          {/* Loyalty card opens modal instead of linking */}
           <div className="panel quick-card" style={{ cursor: "pointer" }} onClick={() => setLoyaltyModal(true)}>
             <div className="quick-icon">🎁</div>
             <h3 style={{ margin: 0 }}>Loyalty Rewards</h3>
@@ -250,7 +275,59 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Upcoming + Right Sidebar */}
+      {/* NEW INSIGHTS SECTION */}
+      <section className="two-col mt-lg">
+        <div className="panel">
+          <div className="panel-head">
+            <div>
+              <h2 style={{ marginBottom: 4 }}>🔥 Recommended Right Now</h2>
+              <p className="muted small" style={{ margin: 0 }}>Most booked pitches across the platform</p>
+            </div>
+          </div>
+
+          {insights.trendingPitches.length === 0 ? (
+            <div className="empty-state">No trending data yet.</div>
+          ) : (
+            <div className="list">
+              {insights.trendingPitches.slice(0, 3).map((p, i) => (
+                <div key={p.pitchId || i} className="list-item">
+                  <div>
+                    <div className="list-title">#{i + 1} {p.name}</div>
+                    <div className="muted small">{p.address}</div>
+                  </div>
+                  <span className="pill paid">{p.count} bookings</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="panel">
+          <div className="panel-head">
+            <div>
+              <h2 style={{ marginBottom: 4 }}>⏰ Smart Insights</h2>
+              <p className="muted small" style={{ margin: 0 }}>Peak playing hours based on real booking data</p>
+            </div>
+          </div>
+
+          {insights.peakSlots.length === 0 ? (
+            <div className="empty-state">No peak hour data yet.</div>
+          ) : (
+            <div className="list">
+              {insights.peakSlots.slice(0, 3).map((s, i) => (
+                <div key={s.slot || i} className="list-item">
+                  <div>
+                    <div className="list-title">#{i + 1} {s.slot}</div>
+                    <div className="muted small">Rush hour slot</div>
+                  </div>
+                  <span className="pill pending">{s.count} bookings</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       <section className="two-col mt-lg">
         <div className="panel">
           <div className="panel-head">
@@ -287,7 +364,6 @@ export default function Home() {
         </div>
 
         <div style={{ display: "grid", gap: "16px" }}>
-          {/* Booking Summary */}
           <div className="panel">
             <h2 className="mb-sm">Booking Summary</h2>
             <div style={{ display: "grid", gap: 10 }}>
@@ -314,9 +390,11 @@ export default function Home() {
 
               {mostBooked && (
                 <div style={{
-                  marginTop: 6, padding: "12px 14px",
+                  marginTop: 6,
+                  padding: "12px 14px",
                   background: "rgba(91,140,255,0.08)",
-                  border: "1px solid rgba(91,140,255,0.2)", borderRadius: 12
+                  border: "1px solid rgba(91,140,255,0.2)",
+                  borderRadius: 12
                 }}>
                   <div className="muted small" style={{ marginBottom: 4 }}>⭐ YOUR GO-TO PITCH</div>
                   <div style={{ fontWeight: 700 }}>{mostBooked.name}</div>
@@ -326,7 +404,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Recent Activity */}
           <div className="panel">
             <h2 className="mb-sm">Recent Activity</h2>
             {loading ? (
@@ -336,7 +413,16 @@ export default function Home() {
             ) : (
               <div style={{ display: "grid", gap: 8 }}>
                 {recentActivity.map(b => (
-                  <div key={b._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid rgba(34,48,71,0.5)" }}>
+                  <div
+                    key={b._id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "8px 0",
+                      borderBottom: "1px solid rgba(34,48,71,0.5)"
+                    }}
+                  >
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{b.pitch?.name || "Pitch"}</div>
                       <div className="muted small">{b.date} &middot; {b.slot}</div>
@@ -353,7 +439,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Loyalty Rewards Modal */}
       {loyaltyModal && (
         <div className="modal-overlay" onClick={() => setLoyaltyModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
@@ -363,8 +448,11 @@ export default function Home() {
             </div>
 
             <div style={{
-              padding: "14px 16px", borderRadius: 12, marginBottom: 16,
-              background: "rgba(91,140,255,0.08)", border: "1px solid rgba(91,140,255,0.2)"
+              padding: "14px 16px",
+              borderRadius: 12,
+              marginBottom: 16,
+              background: "rgba(91,140,255,0.08)",
+              border: "1px solid rgba(91,140,255,0.2)"
             }}>
               <p style={{ margin: 0, fontSize: 14 }}>
                 Book <strong>5 times</strong> at the same pitch and your <strong style={{ color: "var(--ok)" }}>6th booking is FREE!</strong> The cycle repeats — every 6th booking is on us.
@@ -384,18 +472,28 @@ export default function Home() {
                   const remaining = nextIsFree ? 0 : 5 - progress;
 
                   return (
-                    <div key={i} style={{
-                      padding: "14px 16px", borderRadius: 14,
-                      border: nextIsFree ? "1px solid rgba(61,220,151,0.3)" : "1px solid var(--border)",
-                      background: nextIsFree ? "rgba(61,220,151,0.06)" : "rgba(15,22,34,0.55)"
-                    }}>
+                    <div
+                      key={i}
+                      style={{
+                        padding: "14px 16px",
+                        borderRadius: 14,
+                        border: nextIsFree ? "1px solid rgba(61,220,151,0.3)" : "1px solid var(--border)",
+                        background: nextIsFree ? "rgba(61,220,151,0.06)" : "rgba(15,22,34,0.55)"
+                      }}
+                    >
                       <div className="flex-between">
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
                           <div className="muted small">{p.address}</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: 22, fontWeight: 800, color: nextIsFree ? "var(--ok)" : "var(--accent)" }}>
+                          <div
+                            style={{
+                              fontSize: 22,
+                              fontWeight: 800,
+                              color: nextIsFree ? "var(--ok)" : "var(--accent)"
+                            }}
+                          >
                             {progress}/5
                           </div>
                           {p.freeEarned > 0 && (
@@ -404,14 +502,16 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Progress bar */}
                       <div style={{ marginTop: 10, background: "var(--border)", borderRadius: 8, height: 6, overflow: "hidden" }}>
-                        <div style={{
-                          width: `${nextIsFree ? 100 : (progress / 5) * 100}%`,
-                          height: "100%",
-                          background: nextIsFree ? "var(--ok)" : "var(--accent)",
-                          borderRadius: 8, transition: "width 0.3s"
-                        }} />
+                        <div
+                          style={{
+                            width: `${nextIsFree ? 100 : (progress / 5) * 100}%`,
+                            height: "100%",
+                            background: nextIsFree ? "var(--ok)" : "var(--accent)",
+                            borderRadius: 8,
+                            transition: "width 0.3s"
+                          }}
+                        />
                       </div>
 
                       <div className="muted small" style={{ marginTop: 6 }}>
@@ -427,7 +527,9 @@ export default function Home() {
             )}
 
             <div style={{ marginTop: 16, textAlign: "center" }}>
-              <div className="muted small">Total free games earned: <strong style={{ color: "var(--ok)" }}>{stats.freeEarned}</strong></div>
+              <div className="muted small">
+                Total free games earned: <strong style={{ color: "var(--ok)" }}>{stats.freeEarned}</strong>
+              </div>
             </div>
           </div>
         </div>

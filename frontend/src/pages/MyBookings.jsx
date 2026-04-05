@@ -13,6 +13,11 @@ export default function MyBookings() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewedSet, setReviewedSet] = useState(new Set());
 
+  // NEW FILTER STATES
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [dateFilter, setDateFilter] = useState("");
+
   async function loadBookings() {
     setLoading(true);
     try {
@@ -126,8 +131,21 @@ export default function MyBookings() {
     (b) => b.date < today || b.status === "CANCELLED"
   );
 
-  const filtered =
+  const filteredBase =
     tab === "upcoming" ? upcomingList : tab === "past" ? pastList : groupedBookings;
+
+  const filtered = filteredBase.filter((b) => {
+    const matchesSearch = b.pitch?.name
+      ?.toLowerCase()
+      .includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === "ALL" ? true : b.status === statusFilter;
+
+    const matchesDate = dateFilter ? b.date === dateFilter : true;
+
+    return matchesSearch && matchesStatus && matchesDate;
+  });
 
   async function cancelBookingGroup(group) {
     if (!confirm("Cancel this booking?")) return;
@@ -244,6 +262,42 @@ export default function MyBookings() {
         >
           All ({groupedBookings.length})
         </button>
+      </div>
+
+      {/* NEW FILTER BAR */}
+      <div className="filter-bar mt-md" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <label>
+          Search Pitch
+          <input
+            type="text"
+            placeholder="Search by pitch name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </label>
+
+        <label>
+          Status
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">All</option>
+            <option value="PAID">Paid</option>
+            <option value="PENDING_PAYMENT">Pending</option>
+            <option value="CONFIRMED_PAY_LATER">Pay at Venue</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+        </label>
+
+        <label>
+          Date
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+          />
+        </label>
       </div>
 
       {loading ? (
