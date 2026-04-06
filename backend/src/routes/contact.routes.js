@@ -21,7 +21,7 @@ router.post("/", async (req, res) => {
     // Send to admin
     await transporter.sendMail({
       from: `"FutsalMS Contact" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_USER, // futsalms6@gmail.com
+      to: process.env.ADMIN_EMAIL || process.env.EMAIL_USER,
       replyTo: email,
       subject: `[FutsalMS Contact] ${subject}`,
       html: `

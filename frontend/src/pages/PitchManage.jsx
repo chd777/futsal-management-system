@@ -388,7 +388,10 @@ export default function PitchManage() {
     >
       <nav className="user-nav">
         <div className="nav-left">
-          <span className="brand">⚽ FutsalMS</span>
+          <div className="brand-wrap" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+  <img src="/logo.png" alt="FutsalMS" style={{ height: 30, borderRadius: 6 }} onError={(e) => { e.target.style.display = "none"; }} />
+  <span className="brand">FutsalMS</span>
+</div>
           <span className="muted">Pitch Management</span>
         </div>
         <div className="nav-right">
@@ -761,9 +764,10 @@ export default function PitchManage() {
                         <td>NPR {b.priceAtBooking}</td>
                         <td>{statusPill(b.status)}</td>
                         <td>
-                          {b.status !== "CANCELLED" && (
-                            <button
-                              className="btn small danger"
+                          {b.status === "CANCELLED" ? (
+                            <span className="muted small">—</span>
+                          ) : b.date >= new Date().toISOString().slice(0, 10) ? (
+                            <button className="btn small danger"
                               onClick={() => {
                                 setCancelModal(b);
                                 setCancelReason("");
@@ -771,6 +775,8 @@ export default function PitchManage() {
                             >
                               Cancel
                             </button>
+                          ) : (
+                            <span className="muted small">Completed</span>
                           )}
                         </td>
                       </tr>
