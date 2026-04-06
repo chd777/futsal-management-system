@@ -7,14 +7,19 @@ const slides = [
     subtitle: "Discover, book and play without hassle."
   },
   {
-    image: "https://images.unsplash.com/photo-1547347298-4074fc3086f0?w=1200&q=80",
+    image: "https://images.unsplash.com/photo-1552667466-07770ae110d0?w=1200&q=80",
     title: "Play Anytime, Anywhere",
     subtitle: "Find the best futsal pitches near you."
   },
   {
-    image: "https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=1200&q=80",
+    image: "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=1200&q=80",
     title: "Built for Players",
     subtitle: "Fast booking, secure payment, great experience."
+  },
+  {
+    image: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=1200&q=80",
+    title: "Your Game, Your Way",
+    subtitle: "Choose your pitch, pick your time, just play."
   }
 ];
 
@@ -40,11 +45,16 @@ const team = [
 
 export default function AboutUs() {
   const [index, setIndex] = useState(0);
+  const [fade, setFade] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setIndex(prev => (prev + 1) % slides.length);
-    }, 4000);
+      setFade(false);
+      setTimeout(() => {
+        setIndex(prev => (prev + 1) % slides.length);
+        setFade(true);
+      }, 500);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -53,8 +63,9 @@ export default function AboutUs() {
       {/* HERO with Image Slider */}
       <div style={{
         position: "relative", borderRadius: 20, overflow: "hidden",
-        height: 380, marginBottom: 0
+        height: 400, marginBottom: 0
       }}>
+        {/* Preload all images */}
         {slides.map((s, i) => (
           <img
             key={i}
@@ -63,32 +74,39 @@ export default function AboutUs() {
             onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200&q=80"; e.target.onerror = null; }}
             style={{
               position: "absolute", inset: 0, width: "100%", height: "100%",
-              objectFit: "cover", transition: "opacity 1s ease",
+              objectFit: "cover", objectPosition: "center",
+              transition: "opacity 0.8s ease-in-out",
               opacity: i === index ? 1 : 0
             }}
           />
         ))}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(to top, rgba(11,15,23,0.95) 0%, rgba(11,15,23,0.4) 50%, rgba(11,15,23,0.2) 100%)",
+          background: "linear-gradient(to top, rgba(11,15,23,0.95) 0%, rgba(11,15,23,0.5) 40%, rgba(11,15,23,0.15) 100%)",
           display: "flex", flexDirection: "column", justifyContent: "flex-end",
           padding: "40px 36px"
         }}>
-          <h1 style={{ fontSize: 36, fontWeight: 900, marginBottom: 8, lineHeight: 1.2 }}>
+          <h1 style={{
+            fontSize: 38, fontWeight: 900, marginBottom: 8, lineHeight: 1.2,
+            transition: "opacity 0.5s", opacity: fade ? 1 : 0
+          }}>
             {slides[index].title}
           </h1>
-          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.8)", maxWidth: 500 }}>
+          <p style={{
+            fontSize: 16, color: "rgba(255,255,255,0.8)", maxWidth: 500,
+            transition: "opacity 0.5s", opacity: fade ? 1 : 0
+          }}>
             {slides[index].subtitle}
           </p>
 
           {/* Slide indicators */}
-          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
             {slides.map((_, i) => (
-              <div key={i} onClick={() => setIndex(i)} style={{
-                width: i === index ? 32 : 10, height: 4,
+              <div key={i} onClick={() => { setIndex(i); setFade(true); }} style={{
+                width: i === index ? 36 : 10, height: 5,
                 borderRadius: 4, cursor: "pointer",
                 background: i === index ? "var(--accent)" : "rgba(255,255,255,0.3)",
-                transition: "all 0.3s"
+                transition: "all 0.4s"
               }} />
             ))}
           </div>
@@ -98,7 +116,7 @@ export default function AboutUs() {
       {/* Stats Bar */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12,
-        margin: "20px 0"
+        margin: "16px 0"
       }}>
         {stats.map((s, i) => (
           <div key={i} style={{
@@ -156,7 +174,7 @@ export default function AboutUs() {
         <h2 style={{ marginBottom: 16 }}>What Makes FutsalMS Different</h2>
         <div className="grid3">
           {features.map((f, i) => (
-            <div key={i} className="panel" style={{ padding: 20, transition: "transform 0.18s, border-color 0.18s" }}>
+            <div key={i} className="panel quick-card" style={{ padding: 20 }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>{f.icon}</div>
               <h3 style={{ marginBottom: 6, fontSize: 15 }}>{f.title}</h3>
               <p className="muted small" style={{ lineHeight: 1.6 }}>{f.desc}</p>
@@ -167,7 +185,7 @@ export default function AboutUs() {
 
       {/* How It Works */}
       <div className="panel" style={{ marginTop: 20, padding: 28 }}>
-        <h2 style={{ marginBottom: 16 }}>How It Works</h2>
+        <h2 style={{ marginBottom: 20 }}>How It Works</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
           {[
             { step: "1", icon: "🔍", title: "Find a Pitch", desc: "Browse pitches by location, price, and ratings" },
@@ -179,8 +197,7 @@ export default function AboutUs() {
               <div style={{
                 width: 56, height: 56, borderRadius: "50%", margin: "0 auto 12px",
                 background: "rgba(91,140,255,0.12)", border: "1px solid rgba(91,140,255,0.25)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 24
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24
               }}>{s.icon}</div>
               <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700, marginBottom: 4 }}>STEP {s.step}</div>
               <h4 style={{ margin: "0 0 4px" }}>{s.title}</h4>

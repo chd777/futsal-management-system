@@ -5,6 +5,7 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 
 // Route imports
+const contactRoutes = require("./routes/contact.routes");
 const authRoutes = require("./routes/auth.routes");
 const adminPitchRoutes = require("./routes/admin.pitches.routes");
 const adminBookingRoutes = require("./routes/admin.bookings.routes");
@@ -72,7 +73,7 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/pitch-manage", pitchManageRoutes);
-
+app.use("/api/contact", contactRoutes);
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });

@@ -122,22 +122,28 @@ export default function BrowsePitches() {
                 }}
               >
                 <img
-                  src={p.image || FALLBACK_PITCH_IMAGE}
-                  alt={p.name}
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = FALLBACK_PITCH_IMAGE;
-                  }}
-                  style={{
-                    width: "100%",
-                    height: "160px",
-                    objectFit: "cover",
-                    borderRadius: "14px",
-                    marginBottom: "14px",
-                    border: "1px solid rgba(255,255,255,0.04)"
-                  }}
-                />
-
+  src={
+    p.image &&
+    typeof p.image === "string" &&
+    p.image.trim().startsWith("http") &&
+    !p.image.includes("google.com/search")
+      ? p.image.trim()
+      : FALLBACK_PITCH_IMAGE
+  }
+  alt={p.name}
+  onError={(e) => {
+    e.currentTarget.onerror = null;
+    e.currentTarget.src = FALLBACK_PITCH_IMAGE;
+  }}
+  style={{
+    width: "100%",
+    height: "160px",
+    objectFit: "cover",
+    borderRadius: "14px",
+    marginBottom: "14px",
+    border: "1px solid rgba(255,255,255,0.04)"
+  }}
+/>
                 <div className="flex-between" style={{ alignItems: "flex-start" }}>
                   <div>
                     <h3 style={{ marginBottom: 6 }}>{p.name}</h3>

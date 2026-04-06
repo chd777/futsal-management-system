@@ -39,11 +39,30 @@ export default function PublicLayout({ children }) {
             style={{
               textDecoration: "none",
               color: "var(--text-primary)",
-              fontWeight: 800,
-              fontSize: 20
+              display: "flex",
+              alignItems: "center",
+              gap: "10px"
             }}
           >
-            ⚽ FutsalMS
+            <img
+              src="/logo.png"
+              alt="FutsalMS"
+              style={{
+                width: "36px",
+                height: "36px",
+                objectFit: "contain",
+                display: "block"
+              }}
+            />
+            <span
+              style={{
+                fontWeight: 800,
+                fontSize: 20,
+                lineHeight: 1
+              }}
+            >
+              FutsalMS
+            </span>
           </Link>
 
           <nav
