@@ -13,7 +13,7 @@ export default function MyBookings() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewedSet, setReviewedSet] = useState(new Set());
 
-  // NEW FILTER STATES
+  // FILTER STATES
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
@@ -238,6 +238,27 @@ export default function MyBookings() {
     return <span className="pill">{status}</span>;
   }
 
+  // Date input style to fix visibility on dark theme
+  const dateInputStyle = {
+    colorScheme: "dark",
+    minWidth: 160,
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid var(--border)",
+    background: "#0f1622",
+    color: "#eef2f7",
+    fontSize: 14,
+    outline: "none"
+  };
+
+  const hasFilters = searchTerm || statusFilter !== "ALL" || dateFilter;
+
+  function clearFilters() {
+    setSearchTerm("");
+    setStatusFilter("ALL");
+    setDateFilter("");
+  }
+
   return (
     <div>
       <h1>My Bookings</h1>
@@ -264,8 +285,8 @@ export default function MyBookings() {
         </button>
       </div>
 
-      {/* NEW FILTER BAR */}
-      <div className="filter-bar mt-md" style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+      {/* FILTER BAR */}
+      <div className="filter-bar mt-md" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         <label>
           Search Pitch
           <input
@@ -296,14 +317,32 @@ export default function MyBookings() {
             type="date"
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
+            style={dateInputStyle}
           />
         </label>
+
+        {hasFilters && (
+          <button
+            className="btn small ghost"
+            onClick={clearFilters}
+            style={{ marginBottom: 1 }}
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
 
       {loading ? (
         <div className="loading-spinner">Loading bookings...</div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state">No bookings found in this category.</div>
+        <div className="empty-state">
+          <p>No bookings found in this category.</p>
+          {hasFilters && (
+            <button className="btn small mt-md" onClick={clearFilters}>
+              Clear All Filters
+            </button>
+          )}
+        </div>
       ) : (
         <div className="list">
           {filtered.map((g) => (

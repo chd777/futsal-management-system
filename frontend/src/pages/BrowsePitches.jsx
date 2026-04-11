@@ -8,9 +8,20 @@ export default function BrowsePitches() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [location, setLocation] = useState("");
+  const [sort, setSort] = useState("");
 
   const FALLBACK_PITCH_IMAGE =
     "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80";
+
+  const locations = [
+    "Kathmandu",
+    "Lalitpur",
+    "Bhaktapur",
+    "Pokhara",
+    "Chitwan",
+    "Biratnagar"
+  ];
 
   async function loadPitches() {
     setLoading(true);
@@ -18,6 +29,8 @@ export default function BrowsePitches() {
       const params = new URLSearchParams();
       if (search.trim()) params.set("search", search.trim());
       if (maxPrice) params.set("maxPrice", maxPrice);
+      if (location) params.set("location", location);
+      if (sort) params.set("sort", sort);
 
       const res = await api.get(`/api/pitches?${params.toString()}`);
       setPitches(res.data.pitches || []);
@@ -31,7 +44,16 @@ export default function BrowsePitches() {
   useEffect(() => {
     const timer = setTimeout(loadPitches, 300);
     return () => clearTimeout(timer);
-  }, [search, maxPrice]);
+  }, [search, maxPrice, location, sort]);
+
+  function clearFilters() {
+    setSearch("");
+    setMaxPrice("");
+    setLocation("");
+    setSort("");
+  }
+
+  const hasFilters = search || maxPrice || location || sort;
 
   return (
     <div>
@@ -56,8 +78,24 @@ export default function BrowsePitches() {
               placeholder="Search by pitch name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ minWidth: 240 }}
+              style={{ minWidth: 200 }}
             />
+          </label>
+
+          <label>
+            Location
+            <select
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              style={{ minWidth: 150 }}
+            >
+              <option value="">All Locations</option>
+              {locations.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
@@ -67,8 +105,33 @@ export default function BrowsePitches() {
               placeholder="e.g. 2000"
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
+              style={{ minWidth: 120 }}
             />
           </label>
+
+          <label>
+            Sort By
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              style={{ minWidth: 160 }}
+            >
+              <option value="">Relevance</option>
+              <option value="rating">Rating (High to Low)</option>
+              <option value="price_low">Price (Low to High)</option>
+              <option value="price_high">Price (High to Low)</option>
+            </select>
+          </label>
+
+          {hasFilters && (
+            <button
+              className="btn small ghost"
+              onClick={clearFilters}
+              style={{ alignSelf: "flex-end", marginBottom: 1 }}
+            >
+              Clear Filters
+            </button>
+          )}
         </div>
       </section>
 
@@ -96,8 +159,12 @@ export default function BrowsePitches() {
           </div>
 
           <p className="muted small mt-sm">
-            Showing {pitches.length} pitch(es). Click a card below to view details,
-            availability, and booking options.
+            Showing {pitches.length} pitch(es)
+            {location ? ` in ${location}` : ""}
+            {sort === "rating" ? ", sorted by rating" : ""}
+            {sort === "price_low" ? ", sorted by price (low to high)" : ""}
+            {sort === "price_high" ? ", sorted by price (high to low)" : ""}
+            . Click a card below to view details, availability, and booking options.
           </p>
         </div>
       )}
@@ -106,7 +173,14 @@ export default function BrowsePitches() {
         {loading ? (
           <div className="loading-spinner">Loading pitches...</div>
         ) : pitches.length === 0 ? (
-          <div className="empty-state">No pitches found. Try a different search.</div>
+          <div className="empty-state">
+            <p>No pitches found{location ? ` in ${location}` : ""}. Try a different search or filter.</p>
+            {hasFilters && (
+              <button className="btn small mt-md" onClick={clearFilters}>
+                Clear All Filters
+              </button>
+            )}
+          </div>
         ) : (
           <div className="grid3">
             {pitches.map((p) => (
@@ -122,28 +196,28 @@ export default function BrowsePitches() {
                 }}
               >
                 <img
-  src={
-    p.image &&
-    typeof p.image === "string" &&
-    p.image.trim().startsWith("http") &&
-    !p.image.includes("google.com/search")
-      ? p.image.trim()
-      : FALLBACK_PITCH_IMAGE
-  }
-  alt={p.name}
-  onError={(e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src = FALLBACK_PITCH_IMAGE;
-  }}
-  style={{
-    width: "100%",
-    height: "160px",
-    objectFit: "cover",
-    borderRadius: "14px",
-    marginBottom: "14px",
-    border: "1px solid rgba(255,255,255,0.04)"
-  }}
-/>
+                  src={
+                    p.image &&
+                    typeof p.image === "string" &&
+                    p.image.trim().startsWith("http") &&
+                    !p.image.includes("google.com/search")
+                      ? p.image.trim()
+                      : FALLBACK_PITCH_IMAGE
+                  }
+                  alt={p.name}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = FALLBACK_PITCH_IMAGE;
+                  }}
+                  style={{
+                    width: "100%",
+                    height: "160px",
+                    objectFit: "cover",
+                    borderRadius: "14px",
+                    marginBottom: "14px",
+                    border: "1px solid rgba(255,255,255,0.04)"
+                  }}
+                />
                 <div className="flex-between" style={{ alignItems: "flex-start" }}>
                   <div>
                     <h3 style={{ marginBottom: 6 }}>{p.name}</h3>

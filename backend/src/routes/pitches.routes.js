@@ -8,14 +8,23 @@ const PitchClosure = require("../models/PitchClosure");
 router.get("/", async (req, res) => {
   try {
     const filter = { isActive: true };
+
+    // Search by name
     if (req.query.search) {
       filter.name = { $regex: req.query.search, $options: "i" };
     }
+
+    // Filter by max price
     if (req.query.maxPrice) {
       filter.pricePerHour = { $lte: Number(req.query.maxPrice) };
     }
 
-    const pitches = await Pitch.find(filter).sort({ createdAt: -1 });
+    // Filter by location (city)
+    if (req.query.location) {
+      filter.address = { $regex: req.query.location, $options: "i" };
+    }
+
+    const pitches = await Pitch.find(filter);
 
     // Add avg rating and review count
     const result = await Promise.all(
@@ -31,6 +40,22 @@ router.get("/", async (req, res) => {
         };
       })
     );
+
+    // Sort results
+    const sortBy = req.query.sort;
+    if (sortBy === "price_low") {
+      result.sort((a, b) => a.pricePerHour - b.pricePerHour);
+    } else if (sortBy === "price_high") {
+      result.sort((a, b) => b.pricePerHour - a.pricePerHour);
+    } else if (sortBy === "rating") {
+      result.sort((a, b) => b.avgRating - a.avgRating);
+    } else {
+      // Default: relevance (highest rated + most reviewed first)
+      result.sort((a, b) => {
+        if (b.avgRating !== a.avgRating) return b.avgRating - a.avgRating;
+        return b.reviewCount - a.reviewCount;
+      });
+    }
 
     res.json({ pitches: result });
   } catch (err) {
