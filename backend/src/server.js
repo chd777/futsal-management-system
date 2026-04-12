@@ -18,6 +18,7 @@ const reviewRoutes = require("./routes/reviews.routes");
 const chatRoutes = require("./routes/chat.routes");
 const profileRoutes = require("./routes/profile.routes");
 const pitchManageRoutes = require("./routes/pitch-manage.routes");
+const insightRoutes = require("./routes/insights.routes"); // ✅ ADDED
 
 const app = express();
 
@@ -74,6 +75,8 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/pitch-manage", pitchManageRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/insights", insightRoutes); // ✅ ADDED
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
