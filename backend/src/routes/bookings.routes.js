@@ -191,10 +191,10 @@ router.get("/loyalty/:pitchId", auth, async (req, res) => {
       status: { $in: ["PAID", "CONFIRMED_PAY_LATER"] }
     });
 
-    const progress = completedCount % LOYALTY_THRESHOLD;
-    const remaining = LOYALTY_THRESHOLD - progress;
-    const nextIsFree = progress === 0 && completedCount > 0;
-
+    const rawProgress = completedCount % LOYALTY_THRESHOLD;
+const nextIsFree = rawProgress === 0 && completedCount > 0;
+const progress = nextIsFree ? LOYALTY_THRESHOLD : rawProgress;
+const remaining = LOYALTY_THRESHOLD - progress;
     res.json({
       completedBookings: completedCount,
       progress,

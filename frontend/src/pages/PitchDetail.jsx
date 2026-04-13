@@ -236,7 +236,7 @@ export default function PitchDetail() {
                   <h3>🎯 Loyalty Progress</h3>
                   <p className="muted small mt-sm">
                     {loyalty.completedBookings > 0
-                      ? `${loyalty.progress}/5 bookings — ${loyalty.remaining} more for a free game!`
+                      ? `${loyalty.nextIsFree ? 5 : loyalty.progress}/5 bookings — ${loyalty.remaining} more for a free game!`
                       : "Book 5 times at this pitch to earn a free game!"}
                   </p>
                 </>

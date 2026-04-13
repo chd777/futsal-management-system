@@ -407,9 +407,9 @@ export default function Home() {
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 {loyaltyData.map((p, i) => {
-                  const progress = p.count % 5;
-                  const nextIsFree = progress === 0 && p.count > 0;
-                  const remaining = nextIsFree ? 0 : 5 - progress;
+                 const cycleProgress = p.count % 5 === 0 && p.count > 0 ? 5 : p.count % 5;
+const nextIsFree = cycleProgress === 5;
+const remaining = 5 - cycleProgress;
                   return (
                     <div key={i} style={{
                       padding: "14px 16px", borderRadius: 14,
@@ -422,13 +422,13 @@ export default function Home() {
                           <div className="muted small">{p.address}</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: 22, fontWeight: 800, color: nextIsFree ? "var(--ok)" : "var(--accent)" }}>{progress}/5</div>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: nextIsFree ? "var(--ok)" : "var(--accent)" }}>{cycleProgress}/5</div>
                           {p.freeEarned > 0 && <div className="muted small">{p.freeEarned} free earned</div>}
                         </div>
                       </div>
                       <div style={{ marginTop: 10, background: "var(--border)", borderRadius: 8, height: 6, overflow: "hidden" }}>
                         <div style={{
-                          width: `${nextIsFree ? 100 : (progress / 5) * 100}%`, height: "100%",
+                          width: `${nextIsFree ? 100 : (cycleProgress / 5) * 100}%`, height: "100%",
                           background: nextIsFree ? "var(--ok)" : "var(--accent)", borderRadius: 8, transition: "width 0.3s"
                         }} />
                       </div>
