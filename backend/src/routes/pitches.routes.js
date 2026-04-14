@@ -47,8 +47,11 @@ router.get("/", async (req, res) => {
       result.sort((a, b) => a.pricePerHour - b.pricePerHour);
     } else if (sortBy === "price_high") {
       result.sort((a, b) => b.pricePerHour - a.pricePerHour);
-    } else if (sortBy === "rating") {
+    } else if (sortBy === "rating_high" || sortBy === "rating") {
+      // 'rating' kept as fallback for backwards compatibility
       result.sort((a, b) => b.avgRating - a.avgRating);
+    } else if (sortBy === "rating_low") {
+      result.sort((a, b) => a.avgRating - b.avgRating);
     } else {
       // Default: relevance (highest rated + most reviewed first)
       result.sort((a, b) => {

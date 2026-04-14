@@ -70,6 +70,7 @@ export default function BrowsePitches() {
             Sort By
             <select value={sort} onChange={e => setSort(e.target.value)} style={{ minWidth: 160 }}>
               <option value="">Relevance</option>
+              <option value="rating">Rating (Low to High)</option>
               <option value="rating">Rating (High to Low)</option>
               <option value="price_low">Price (Low to High)</option>
               <option value="price_high">Price (High to Low)</option>
