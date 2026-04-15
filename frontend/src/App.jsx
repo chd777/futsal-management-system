@@ -1,4 +1,5 @@
 import AdminClosures from "./pages/AdminClosures";
+import AdminUsers from "./pages/AdminUsers";
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
@@ -66,6 +67,7 @@ export default function App() {
       <Route path="/admin/bookings" element={<AdminPage><AdminBookings /></AdminPage>} />
       <Route path="/admin/revenue" element={<AdminPage><AdminRevenue /></AdminPage>} />
       <Route path="/admin/closures" element={<AdminPage><AdminClosures /></AdminPage>} />
+      <Route path="/admin/users" element={<AdminPage><AdminUsers /></AdminPage>} />
 
       {/* User Routes */}
       <Route path="/home" element={<UserPage><Home /></UserPage>} />

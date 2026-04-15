@@ -14,7 +14,6 @@ const I = {
   users: (p) => <Icon {...p} d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" d2="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />,
   pin: (p) => <Icon {...p} d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z" d2="M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />,
   trend: (p) => <Icon {...p} d="M23 6l-9.5 9.5-5-5L1 18" d2="M17 6h6v6" />,
-  ext: (p) => <Icon {...p} d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3" />,
   eye: (p) => <Icon {...p} d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" d2="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />,
   pitch: (p) => <Icon {...p} d="M3 3h18v18H3ZM3 12h18M12 3v18" />,
   book: (p) => <Icon {...p} d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15Z" />,
@@ -38,18 +37,12 @@ const S = {
   },
   title: { fontSize: 30, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 4 },
   accent: { background: "linear-gradient(135deg, #00d296, #0ea5e9)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" },
-  exportBtn: {
-    display: "inline-flex", alignItems: "center", gap: 6,
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 12, padding: "9px 18px", color: "rgba(255,255,255,0.7)",
-    fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.3s",
-    textDecoration: "none",
-  },
   statsGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginTop: 24 },
   statCard: {
     background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)",
     borderRadius: 16, padding: "20px 22px", position: "relative", overflow: "hidden",
     transition: "border-color 0.3s, transform 0.25s", cursor: "default",
+    textDecoration: "none", color: "inherit", display: "block",
   },
   statTopLine: (c) => ({
     position: "absolute", top: 0, left: 0, right: 0, height: 2,
@@ -118,31 +111,22 @@ function RevenueChart({ monthly }) {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const now = new Date();
   const data = [];
-
-  // Build last 7 months of data
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const label = months[d.getMonth()];
-    // Use monthly revenue for current month, simulate a trend for past
     const val = i === 0 ? (monthly || 0) : Math.max(0, (monthly || 5000) * (0.4 + Math.random() * 0.8));
     data.push({ label, value: Math.round(val) });
   }
-
   const max = Math.max(...data.map(d => d.value), 1);
   const W = 320, H = 160, PAD = 30;
   const stepX = (W - PAD * 2) / (data.length - 1);
-
   const points = data.map((d, i) => ({
     x: PAD + i * stepX,
     y: H - PAD - ((d.value / max) * (H - PAD * 2)),
   }));
-
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
   const area = `${line} L${points[points.length - 1].x},${H - PAD} L${points[0].x},${H - PAD} Z`;
-
-  // Y-axis labels
   const yLabels = [0, Math.round(max / 2 / 1000) + "K", Math.round(max / 1000) + "K"];
-
   return (
     <svg viewBox={`0 0 ${W} ${H + 20}`} style={{ width: "100%", height: "auto" }}>
       <defs>
@@ -155,31 +139,19 @@ function RevenueChart({ monthly }) {
           <stop offset="100%" stopColor="#0ea5e9" />
         </linearGradient>
       </defs>
-
-      {/* Grid lines */}
       {[0, 0.5, 1].map((r, i) => {
         const y = H - PAD - r * (H - PAD * 2);
         return <line key={i} x1={PAD} y1={y} x2={W - PAD} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />;
       })}
-
-      {/* Y labels */}
       {yLabels.map((label, i) => {
         const y = H - PAD - (i / 2) * (H - PAD * 2);
         return <text key={i} x={PAD - 6} y={y + 4} textAnchor="end" fill="rgba(255,255,255,0.25)" fontSize="10" fontFamily="monospace">{label}</text>;
       })}
-
-      {/* Area */}
       <path d={area} fill="url(#chartGrad)" />
-
-      {/* Line */}
       <path d={line} fill="none" stroke="url(#lineGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-
-      {/* Dots */}
       {points.map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="#0a0e17" stroke="#00d296" strokeWidth="2" />
       ))}
-
-      {/* X labels */}
       {data.map((d, i) => (
         <text key={i} x={points[i].x} y={H + 6} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="10" fontFamily="sans-serif">{d.label}</text>
       ))}
@@ -187,7 +159,6 @@ function RevenueChart({ monthly }) {
   );
 }
 
-/* ─── Status Pill ─── */
 function StatusPill({ status }) {
   if (status === "PAID") return <span style={S.pill("rgba(0,210,150,0.1)", "rgba(0,210,150,0.25)", "#00d296")}>PAID</span>;
   if (status === "PENDING_PAYMENT") return <span style={S.pill("rgba(245,158,11,0.1)", "rgba(245,158,11,0.25)", "#f59e0b")}>PENDING</span>;
@@ -196,7 +167,6 @@ function StatusPill({ status }) {
   return <span style={S.pill("rgba(255,255,255,0.05)", "rgba(255,255,255,0.1)", "rgba(255,255,255,0.5)")}>{status}</span>;
 }
 
-/* ─── Avatar colors ─── */
 const COLORS = ["#00d296", "#6366f1", "#0ea5e9", "#f59e0b", "#ff5b6e", "#a78bfa", "#f472b6"];
 function getColor(name) { return COLORS[(name || "").charCodeAt(0) % COLORS.length]; }
 
@@ -212,7 +182,6 @@ function timeAgo(dateStr) {
   return `${d}d ago`;
 }
 
-/* ─── Main Component ─── */
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [recentBookings, setRecentBookings] = useState([]);
@@ -228,16 +197,13 @@ export default function AdminDashboard() {
         ]);
         setStats(revRes.data);
 
-        // Get recent bookings (latest 5)
         const allBookings = bookRes.data.bookings || [];
         const sorted = [...allBookings].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         setRecentBookings(sorted.slice(0, 5));
 
-        // Try to get user/pitch counts
         try {
           const [usersRes, pitchesRes] = await Promise.all([
             api.get("/api/admin/bookings").then(r => {
-              // Count unique users from bookings
               const userSet = new Set((r.data.bookings || []).map(b => b.user?._id || b.user));
               return userSet.size;
             }),
@@ -255,20 +221,19 @@ export default function AdminDashboard() {
 
   if (loading) return <div style={{ textAlign: "center", padding: 60, color: "rgba(255,255,255,0.4)" }}>Loading dashboard...</div>;
 
-  const statCards = [
-    { label: "Total Bookings", value: (stats?.totalBookings || 0).toLocaleString(), icon: <I.cal size={18} color="#00d296" />, accent: "#00d296", growth: "+18% this month" },
-    { label: "Total Revenue", value: `Rs. ${formatCompact(stats?.totalRevenue || 0)}`, icon: <I.money size={18} color="#6366f1" />, accent: "#6366f1", growth: `+12%` },
-    { label: "Active Users", value: extraStats.users || "—", icon: <I.users size={18} color="#0ea5e9" />, accent: "#0ea5e9", growth: "+8%" },
-    { label: "Active Pitches", value: extraStats.pitches || "—", icon: <I.pin size={18} color="#f59e0b" />, accent: "#f59e0b" },
-  ];
-
   function formatCompact(n) {
     if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
     if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "K";
     return n.toLocaleString();
   }
 
-  // Table data (latest 4 bookings)
+  const statCards = [
+    { label: "Total Bookings", value: (stats?.totalBookings || 0).toLocaleString(), icon: <I.cal size={18} color="#00d296" />, accent: "#00d296", growth: "+18% this month", to: "/admin/bookings" },
+    { label: "Total Revenue", value: `Rs. ${formatCompact(stats?.totalRevenue || 0)}`, icon: <I.money size={18} color="#6366f1" />, accent: "#6366f1", growth: "+12%", to: "/admin/revenue" },
+    { label: "Active Users", value: extraStats.users || "—", icon: <I.users size={18} color="#0ea5e9" />, accent: "#0ea5e9", growth: "+8%", to: "/admin/users" },
+    { label: "Active Pitches", value: extraStats.pitches || "—", icon: <I.pin size={18} color="#f59e0b" />, accent: "#f59e0b", to: "/admin/pitches" },
+  ];
+
   const tableBookings = recentBookings.slice(0, 4);
   const latestId = stats?.totalBookings || 1000;
 
@@ -279,22 +244,15 @@ export default function AdminDashboard() {
 
         {/* Header */}
         <div style={S.badge}>✦ Admin Panel</div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <h1 style={S.title}>Admin <span style={S.accent}>Dashboard</span></h1>
-            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 14 }}>Platform overview and management</p>
-          </div>
-          <Link to="/admin/revenue" style={S.exportBtn}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(0,210,150,0.3)"; e.currentTarget.style.color = "#00d296"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}>
-            Export Report <I.ext size={14} />
-          </Link>
+        <div style={{ marginBottom: 8 }}>
+          <h1 style={S.title}>Admin <span style={S.accent}>Dashboard</span></h1>
+          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 14 }}>Platform overview and management</p>
         </div>
 
-        {/* Stat Cards */}
+        {/* Stat Cards (now clickable Links) */}
         <div style={S.statsGrid}>
           {statCards.map((s, i) => (
-            <div key={i} style={S.statCard}
+            <Link key={i} to={s.to} style={S.statCard}
               onMouseEnter={e => { e.currentTarget.style.borderColor = s.accent + "40"; e.currentTarget.style.transform = "translateY(-3px)"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "none"; }}>
               <div style={S.statTopLine(s.accent)} />
@@ -304,13 +262,12 @@ export default function AdminDashboard() {
               </div>
               <div style={{ ...S.statValue, color: "var(--text, #eef2f7)" }}>{s.value}</div>
               {s.growth && <div style={S.growthBadge(true)}><I.trend size={11} /> {s.growth}</div>}
-            </div>
+            </Link>
           ))}
         </div>
 
         {/* Recent Bookings + Revenue Chart */}
         <div style={S.twoCol}>
-          {/* Recent Bookings */}
           <div style={S.panel}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -319,7 +276,6 @@ export default function AdminDashboard() {
               </div>
               <Link to="/admin/bookings" style={{ color: "#00d296", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>View All</Link>
             </div>
-
             {recentBookings.length === 0 ? (
               <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 13, textAlign: "center", padding: 20 }}>No bookings yet.</p>
             ) : (
@@ -353,7 +309,6 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* Revenue Chart */}
           <div style={S.panel}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

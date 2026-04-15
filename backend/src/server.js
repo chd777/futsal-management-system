@@ -11,6 +11,7 @@ const adminPitchRoutes = require("./routes/admin.pitches.routes");
 const adminBookingRoutes = require("./routes/admin.bookings.routes");
 const adminRevenueRoutes = require("./routes/admin.revenue.routes");
 const adminClosureRoutes = require("./routes/admin.closures.routes");
+const adminUserRoutes = require("./routes/admin.users.routes");
 const pitchRoutes = require("./routes/pitches.routes");
 const bookingRoutes = require("./routes/bookings.routes");
 const paymentRoutes = require("./routes/payments.routes");
@@ -65,6 +66,7 @@ app.use("/api/admin/pitches", adminPitchRoutes);
 app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api/admin/revenue", adminRevenueRoutes);
 app.use("/api/admin/closures", adminClosureRoutes);
+app.use("/api/admin/users", adminUserRoutes);
 
 // Public / User
 app.use("/api/pitches", pitchRoutes);
