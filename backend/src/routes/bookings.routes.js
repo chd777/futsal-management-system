@@ -40,6 +40,44 @@ function buildCombinedEmailBooking(bookings) {
   };
 }
 
+// Loyalty check helper — used in both booking creation and loyalty status
+async function checkLoyalty(userId, pitchId) {
+  // Count only PAID bookings that are NOT loyalty rewards
+  const paidCount = await Booking.countDocuments({
+    user: userId,
+    pitch: pitchId,
+    status: { $in: ["PAID", "CONFIRMED_PAY_LATER"] },
+    isLoyaltyReward: { $ne: true }
+  });
+
+  // Count how many free rewards have been claimed
+  const rewardsUsed = await Booking.countDocuments({
+    user: userId,
+    pitch: pitchId,
+    isLoyaltyReward: true
+  });
+
+  // How many rewards has the user earned based on paid bookings
+  const rewardsEarned = Math.floor(paidCount / LOYALTY_THRESHOLD);
+
+  // Next is free only if earned more rewards than used
+  const nextIsFree = paidCount > 0 && rewardsEarned > rewardsUsed;
+
+  // Progress in current cycle
+  const rawProgress = paidCount % LOYALTY_THRESHOLD;
+  const progress = nextIsFree ? LOYALTY_THRESHOLD : rawProgress;
+  const remaining = nextIsFree ? 0 : LOYALTY_THRESHOLD - rawProgress;
+
+  return {
+    paidCount,
+    rewardsUsed,
+    rewardsEarned,
+    nextIsFree,
+    progress,
+    remaining
+  };
+}
+
 // Create booking (supports single slot or multiple consecutive slots)
 router.post("/", auth, async (req, res) => {
   try {
@@ -77,15 +115,9 @@ router.post("/", auth, async (req, res) => {
       }
     }
 
-    // Check loyalty
-    const completedCount = await Booking.countDocuments({
-      user: userId,
-      pitch: pitchId,
-      status: { $in: ["PAID", "CONFIRMED_PAY_LATER"] }
-    });
-
-    const isLoyaltyReward =
-      completedCount > 0 && completedCount % LOYALTY_THRESHOLD === 0;
+    // Check loyalty using the helper
+    const loyalty = await checkLoyalty(userId, pitchId);
+    const isLoyaltyReward = loyalty.nextIsFree;
 
     // IMPORTANT: create one bookingGroup for the whole request
     const bookingGroup =
@@ -96,6 +128,7 @@ router.post("/", auth, async (req, res) => {
     // Create bookings for all selected slots
     const createdBookings = [];
     for (let i = 0; i < sortedSlotList.length; i++) {
+      // Only the FIRST slot gets the loyalty reward
       const isThisLoyalty = i === 0 && isLoyaltyReward;
 
       const booking = await Booking.create({
@@ -121,7 +154,7 @@ router.post("/", auth, async (req, res) => {
     if (user) {
       if (isLoyaltyReward) {
         emailService
-          .sendLoyaltyRewardEmail(user, combinedEmailBooking, pitch, completedCount)
+          .sendLoyaltyRewardEmail(user, combinedEmailBooking, pitch, loyalty.paidCount)
           .catch(() => {});
       } else {
         emailService
@@ -185,22 +218,16 @@ router.get("/my", auth, async (req, res) => {
 // Get loyalty status for a pitch
 router.get("/loyalty/:pitchId", auth, async (req, res) => {
   try {
-    const completedCount = await Booking.countDocuments({
-      user: req.user.sub,
-      pitch: req.params.pitchId,
-      status: { $in: ["PAID", "CONFIRMED_PAY_LATER"] }
-    });
+    const loyalty = await checkLoyalty(req.user.sub, req.params.pitchId);
 
-    const rawProgress = completedCount % LOYALTY_THRESHOLD;
-const nextIsFree = rawProgress === 0 && completedCount > 0;
-const progress = nextIsFree ? LOYALTY_THRESHOLD : rawProgress;
-const remaining = LOYALTY_THRESHOLD - progress;
     res.json({
-      completedBookings: completedCount,
-      progress,
-      remaining: nextIsFree ? 0 : remaining,
-      nextIsFree,
-      threshold: LOYALTY_THRESHOLD
+      completedBookings: loyalty.paidCount,
+      progress: loyalty.progress,
+      remaining: loyalty.remaining,
+      nextIsFree: loyalty.nextIsFree,
+      threshold: LOYALTY_THRESHOLD,
+      rewardsEarned: loyalty.rewardsEarned,
+      rewardsUsed: loyalty.rewardsUsed
     });
   } catch (err) {
     console.error(err);

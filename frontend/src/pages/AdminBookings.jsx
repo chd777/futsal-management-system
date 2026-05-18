@@ -73,20 +73,30 @@ export default function AdminBookings() {
     }
   }
 
-  // ✅ NEW FUNCTION (IMPORTANT)
   function isPastBooking(booking) {
     const now = new Date();
-
     const [endHour, endMinute] = booking.slot.split("-")[1].split(":");
-
     const bookingEnd = new Date(
       `${booking.date}T${endHour}:${endMinute}:00`
     );
-
     return bookingEnd <= now;
   }
 
-  function statusPill(status, refundStatus) {
+  function statusPill(status, refundStatus, isLoyaltyReward) {
+    if (isLoyaltyReward) {
+      return (
+        <span
+          className="pill"
+          style={{
+            background: "rgba(168,85,247,0.15)",
+            color: "#a855f7",
+            border: "1px solid rgba(168,85,247,0.3)"
+          }}
+        >
+          🎉 Free (Loyalty)
+        </span>
+      );
+    }
     if (status === "PAID") return <span className="pill paid">Paid</span>;
     if (status === "PENDING_PAYMENT") return <span className="pill pending">Pending</span>;
     if (status === "CONFIRMED_PAY_LATER") return <span className="pill pending">Pay at Venue</span>;
@@ -164,11 +174,12 @@ export default function AdminBookings() {
                   <td>{b.slot}</td>
                   <td>NPR {b.priceAtBooking}</td>
 
-                  <td>{statusPill(b.status, b.refundStatus)}</td>
+                  <td>{statusPill(b.status, b.refundStatus, b.isLoyaltyReward)}</td>
 
                   <td>
-                    {/* ✅ FIXED LOGIC HERE */}
-                    {b.status !== "CANCELLED" && !isPastBooking(b) ? (
+                    {b.isLoyaltyReward ? (
+                      <span className="muted small">Loyalty Reward</span>
+                    ) : b.status !== "CANCELLED" && !isPastBooking(b) ? (
                       <button
                         className="btn small danger"
                         onClick={() => openCancelModal(b)}

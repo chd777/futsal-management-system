@@ -197,7 +197,14 @@ export default function PitchManage() {
     }
   }
 
-  function statusPill(status) {
+  function statusPill(status, isLoyaltyReward) {
+    if (isLoyaltyReward) {
+      return (
+        <span className="pill" style={{ background: "rgba(168,85,247,0.15)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.3)" }}>
+          🎉 Free (Loyalty)
+        </span>
+      );
+    }
     if (status === "PAID") return <span className="pill paid">Paid</span>;
     if (status === "CONFIRMED_PAY_LATER") {
       return <span className="pill pending">Pay at Venue</span>;
@@ -210,7 +217,6 @@ export default function PitchManage() {
     }
     return <span className="pill">{status}</span>;
   }
-
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
       const dateMatch = bookingFilterDate ? b.date === bookingFilterDate : true;
@@ -762,9 +768,11 @@ export default function PitchManage() {
                         <td>{b.date}</td>
                         <td>{b.slot}</td>
                         <td>NPR {b.priceAtBooking}</td>
-                        <td>{statusPill(b.status)}</td>
+                        <td>{statusPill(b.status, b.isLoyaltyReward)}</td>
                         <td>
-                          {b.status === "CANCELLED" ? (
+                          {b.isLoyaltyReward ? (
+                            <span className="muted small">Loyalty Reward</span>
+                          ) : b.status === "CANCELLED" ? (
                             <span className="muted small">—</span>
                           ) : b.date >= new Date().toISOString().slice(0, 10) ? (
                             <button className="btn small danger"
