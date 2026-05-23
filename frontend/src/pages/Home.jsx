@@ -407,9 +407,12 @@ export default function Home() {
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 {loyaltyData.map((p, i) => {
-                 const cycleProgress = p.count % 5 === 0 && p.count > 0 ? 5 : p.count % 5;
-const nextIsFree = cycleProgress === 5;
-const remaining = 5 - cycleProgress;
+                 const paidCount = p.count - p.freeEarned;
+const rewardsEarned = Math.floor(paidCount / 5);
+const nextIsFree = paidCount > 0 && rewardsEarned > p.freeEarned;
+const rawProgress = paidCount % 5;
+const cycleProgress = nextIsFree ? 5 : rawProgress;
+const remaining = nextIsFree ? 0 : 5 - rawProgress;
                   return (
                     <div key={i} style={{
                       padding: "14px 16px", borderRadius: 14,
